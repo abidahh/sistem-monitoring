@@ -32,11 +32,11 @@ var (
 )
 
 var (
-	simulatorStopCh     chan struct{}
-	simulatorRunning    bool
-	simulatorMutex      sync.Mutex
-	lastHardwareRead    atomic.Int64
-	hardwareEverSeen    atomic.Bool
+	simulatorStopCh  chan struct{}
+	simulatorRunning bool
+	simulatorMutex   sync.Mutex
+	lastHardwareRead atomic.Int64
+	hardwareEverSeen atomic.Bool
 )
 
 // NotifyHardwareActivity dipanggil oleh serial reader setiap kali berhasil
@@ -91,7 +91,7 @@ func InitIntervalSetting() {
 		}
 	} else {
 		readInterval = config.Cfg.DefaultSensorInterval
-	config.DB.Create(&models.Setting{Key: "sensor_interval", Value: strconv.Itoa(config.Cfg.DefaultSensorInterval)})
+		config.DB.Create(&models.Setting{Key: "sensor_interval", Value: strconv.Itoa(config.Cfg.DefaultSensorInterval)})
 	}
 }
 
@@ -260,7 +260,7 @@ func recordSensorReading(sensorTypeID uint, value float64, sumber string) (bool,
 func GetLatestSensorData(c *gin.Context) {
 	ids, err := currentUserSensorTypeIDs(c)
 	if err != nil || len(ids) == 0 {
-		c.JSON(http.StatusOK, gin.H{"data": []models.SensorData{}, "interval": GetCurrentInterval(), "sensor_types": []models.SensorType{}})
+		c.JSON(http.StatusOK, gin.H{"data": []models.SensorData{}, "interval": GetCurrentInterval(), "sensor_types": []models.SensorType{}, "server_time": time.Now()})
 		return
 	}
 
@@ -274,6 +274,7 @@ func GetLatestSensorData(c *gin.Context) {
 		"data":         sensorData,
 		"interval":     GetCurrentInterval(),
 		"sensor_types": types,
+		"server_time":  time.Now(),
 	})
 }
 
@@ -574,9 +575,9 @@ func UpdateAverageSetting(c *gin.Context) {
 func GetSpikeSetting(c *gin.Context) {
 	enabled, ratio, absMin := getSpikeDetectionConfig()
 	c.JSON(http.StatusOK, gin.H{
-		"enabled":     enabled,
-		"jump_ratio":  ratio,
-		"abs_min":     absMin,
+		"enabled":    enabled,
+		"jump_ratio": ratio,
+		"abs_min":    absMin,
 	})
 }
 
