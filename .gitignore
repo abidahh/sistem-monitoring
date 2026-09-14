@@ -9,6 +9,9 @@ monitoring_backup_*.db
 cod-server
 cod-server-linux-arm64
 
+# File konfigurasi rahasia (.env) yang berisi password/API key
+*.env
+
 # Log
 *.log
 
