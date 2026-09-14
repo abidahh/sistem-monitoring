@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Sistem Monitoring COD</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --login-bg: #f8fafc;
+            --login-text: #334155;
+            --login-card-bg: #ffffff;
+            --login-card-border: #e2e8f0;
+            --login-label: #475569;
+            --login-subheading: #64748b;
+            --login-heading: #0f172a;
+            --login-input-bg: #ffffff;
+            --login-input-border: #e2e8f0;
+            --login-input-color: #1e293b;
+            --login-mobile: #0f172a;
+            --theme-btn-bg: rgba(255, 255, 255, 0.7);
+            --theme-btn-color: #334155;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: var(--login-bg);
+            color: var(--login-text);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        body.dark {
+            --login-bg: #0f172a;
+            --login-text: #cbd5e1;
+            --login-card-bg: #1e293b;
+            --login-card-border: #334155;
+            --login-label: #94a3b8;
+            --login-subheading: #94a3b8;
+            --login-heading: #f1f5f9;
+            --login-input-bg: #0f172a;
+            --login-input-border: #334155;
+            --login-input-color: #e2e8f0;
+            --login-mobile: #f1f5f9;
+            --theme-btn-bg: rgba(255, 255, 255, 0.1);
+            --theme-btn-color: #e2e8f0;
+        }
+
+        .theme-toggle {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            z-index: 1100;
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            border: 1px solid var(--login-card-border);
+            background: var(--theme-btn-bg);
+            color: var(--theme-btn-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.15rem;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(2, 6, 23, 0.12);
+            transition: transform 0.15s ease, background 0.3s ease, color 0.3s ease;
+        }
+
+        .theme-toggle:hover { transform: translateY(-1px); }
+
+        .auth-wrapper {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* PANEL BRANDING KIRI */
+        .auth-brand {
+            width: 46%;
+            background: linear-gradient(135deg, #627bd4 0%, #0d9488 100%);
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 56px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .brand-blob {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .blob-1 { width: 320px; height: 320px; top: -100px; left: -80px; }
+        .blob-2 { width: 220px; height: 220px; bottom: -60px; right: -40px; }
+        .blob-3 { width: 120px; height: 120px; bottom: 120px; left: 60px; background: rgba(255, 255, 255, 0.06); }
+
+        .brand-logo {
+            width: 68px;
+            height: 68px;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.18);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            margin-bottom: 24px;
+            backdrop-filter: blur(4px);
+        }
+
+        .auth-brand h1 {
+            font-size: 1.7rem;
+            font-weight: 700;
+            line-height: 1.35;
+            margin-bottom: 10px;
+        }
+
+        .auth-brand p.lead-text {
+            font-size: 0.92rem;
+            opacity: 0.85;
+            margin-bottom: 34px;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            background: rgba(255, 255, 255, 0.12);
+            border-radius: 12px;
+            padding: 13px 18px;
+            margin-bottom: 12px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            backdrop-filter: blur(4px);
+        }
+
+        .feature-item i {
+            font-size: 1.25rem;
+            opacity: 0.95;
+        }
+
+        /* PANEL FORM KANAN */
+        .auth-form-side {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 32px 20px;
+        }
+
+        .mobile-brand {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 22px;
+            font-weight: 700;
+            color: var(--login-mobile);
+        }
+
+        .mobile-brand i { color: #627bd4; font-size: 1.5rem; }
+
+        .auth-card {
+            width: 100%;
+            max-width: 430px;
+            background: var(--login-card-bg);
+            border: 1px solid var(--login-card-border);
+            border-radius: 16px;
+            box-shadow: 0 12px 40px rgba(2, 6, 23, 0.08);
+            padding: 38px 36px;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+
+        .form-heading {
+            font-size: 1.45rem;
+            font-weight: 700;
+            color: var(--login-heading);
+        }
+
+        .form-subheading {
+            font-size: 0.86rem;
+            color: var(--login-subheading);
+            margin-bottom: 26px;
+        }
+
+        .field-label {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--login-label);
+            margin-bottom: 6px;
+        }
+
+        .input-wrap {
+            position: relative;
+            margin-bottom: 16px;
+        }
+
+        .input-wrap > .lead-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+            font-size: 1rem;
+            pointer-events: none;
+        }
+
+        .input-wrap input.form-control {
+            height: 47px;
+            border-radius: 10px;
+            border: 1.5px solid var(--login-input-border);
+            padding-left: 42px;
+            font-size: 0.92rem;
+            background-color: var(--login-input-bg);
+            color: var(--login-input-color);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .input-wrap.has-toggle input.form-control {
+            padding-right: 44px;
+        }
+
+        .input-wrap input.form-control:focus {
+            border-color: #627bd4;
+            box-shadow: 0 0 0 0.2rem rgba(98, 123, 212, 0.15);
+            background-color: var(--login-input-bg);
+            color: var(--login-input-color);
+        }
+
+        .input-wrap input.form-control::placeholder { color: #64748b; }
+
+        .toggle-pass {
+            position: absolute;
+            right: 6px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            padding: 8px 10px;
+            line-height: 1;
+        }
+
+        .toggle-pass:hover { color: #627bd4; }
+
+        .btn-auth {
+            width: 100%;
+            height: 47px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(90deg, #627bd4 0%, #0d9488 100%);
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 0.95rem;
+            letter-spacing: 0.3px;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .btn-auth:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 20px rgba(13, 148, 136, 0.35);
+            color: #ffffff;
+        }
+
+        .btn-auth:disabled { opacity: 0.75; }
+
+        .switch-mode {
+            text-align: center;
+            font-size: 0.87rem;
+            margin-top: 20px;
+            margin-bottom: 0;
+            color: var(--login-subheading);
+        }
+
+        .switch-mode a {
+            color: #627bd4;
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .switch-mode a:hover { text-decoration: underline; }
+
+        #alertBox {
+            border-radius: 10px;
+            font-size: 0.88rem;
+            font-weight: 600;
+        }
+
+        @media (max-width: 991.98px) {
+            .mobile-brand { display: flex; }
+        }
+    </style>
+</head>
+<body>
+
+<button type="button" class="theme-toggle" id="themeToggle" title="Ganti Mode Terang/Gelap">
+    <i class="bi bi-moon-stars"></i>
+</button>
+
+<div class="auth-wrapper">
+
+    <div class="auth-brand d-none d-lg-flex">
+        <span class="brand-blob blob-1"></span>
+        <span class="brand-blob blob-2"></span>
+        <span class="brand-blob blob-3"></span>
+
+        <div class="brand-logo"><i class="bi bi-water"></i></div>
+        <h1>Sistem Monitoring<br>COD &amp; Suhu Air</h1>
+        <p class="lead-text">Pantau kualitas air secara real-time dari mana saja.</p>
+
+        <div class="feature-item"><i class="bi bi-speedometer2"></i> Pemantauan Real-Time</div>
+        <div class="feature-item"><i class="bi bi-graph-up"></i> Grafik Tren Otomatis</div>
+        <div class="feature-item"><i class="bi bi-exclamation-triangle"></i> Peringatan Ambang Batas</div>
+        <div class="feature-item"><i class="bi bi-file-earmark-bar-graph"></i> Ekspor Laporan Excel &amp; PDF</div>
+    </div>
+
+    <div class="auth-form-side">
+        <div class="mobile-brand">
+            <i class="bi bi-water"></i> Sistem Monitoring COD &amp; Suhu Air
+        </div>
+
+        <div class="auth-card">
+            <h4 class="form-heading" id="formTitle">Selamat Datang Kembali</h4>
+            <p class="form-subheading" id="formSubtitle">Masuk untuk mulai memantau kualitas air.</p>
+
+            <div id="alertBox" class="alert d-none"></div>
+
+            <!-- FORM LOGIN -->
+            <form id="loginForm" autocomplete="off">
+                <label class="field-label">Username</label>
+                <div class="input-wrap">
+                    <i class="bi bi-person lead-icon"></i>
+                    <input type="text" id="loginUsername" class="form-control" placeholder="Masukkan username" required>
+                </div>
+
+                <label class="field-label">Password</label>
+                <div class="input-wrap has-toggle">
+                    <i class="bi bi-lock lead-icon"></i>
+                    <input type="password" id="loginPassword" class="form-control" placeholder="Masukkan password" required>
+                    <button type="button" class="toggle-pass" data-target="loginPassword"><i class="bi bi-eye"></i></button>
+                </div>
+
+                <button type="submit" class="btn btn-auth mt-2"><i class="bi bi-box-arrow-in-right me-2"></i>Masuk</button>
+
+                <div class="alert alert-info border-0 small py-2 px-3 mt-3 mb-0" style="background-color:#e0f2fe; color:#0369a1;">
+                    <i class="bi bi-shield-lock me-1"></i> Akun dibuat dan divalidasi oleh Admin. Hubungi Administrator jika belum memiliki akun.
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    const loginForm = document.getElementById('loginForm');
+    const alertBox = document.getElementById('alertBox');
+
+    document.querySelectorAll('.toggle-pass').forEach(btn => {
+        btn.onclick = () => {
+            const input = document.getElementById(btn.dataset.target);
+            const icon = btn.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'bi bi-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'bi bi-eye';
+            }
+        };
+    });
+
+    function showAlert(msg, type) {
+        alertBox.className = `alert alert-${type}`;
+        alertBox.style.borderRadius = '10px';
+        alertBox.style.fontSize = '0.88rem';
+        alertBox.style.fontWeight = '600';
+        alertBox.innerText = msg;
+        alertBox.classList.remove('d-none');
+    }
+
+    function setLoading(form, loading) {
+        const btn = form.querySelector('button[type="submit"]');
+        if (loading) {
+            btn.dataset.orig = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Memproses...';
+        } else {
+            btn.disabled = false;
+            btn.innerHTML = btn.dataset.orig;
+        }
+    }
+
+    loginForm.onsubmit = async (e) => {
+        e.preventDefault();
+        setLoading(loginForm, true);
+        try {
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: document.getElementById('loginUsername').value,
+                    password: document.getElementById('loginPassword').value
+                })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                window.location.href = data.role === 'admin' ? '/admin' : '/dashboard';
+                return;
+            }
+            showAlert(data.error || 'Login gagal!', 'danger');
+        } catch (err) {
+            showAlert('Tidak dapat terhubung ke server.', 'danger');
+        } finally {
+            setLoading(loginForm, false);
+        }
+    };
+
+    // --- DARK MODE ---
+    const themeBtn = document.getElementById('themeToggle');
+    const themeIcon = themeBtn.querySelector('i');
+
+    function applyTheme(theme) {
+        document.body.classList.toggle('dark', theme === 'dark');
+        localStorage.setItem('theme', theme);
+        themeIcon.className = theme === 'dark' ? 'bi bi-sun' : 'bi bi-moon-stars';
+    }
+
+    if (localStorage.getItem('theme') === 'dark') applyTheme('dark');
+
+    themeBtn.onclick = () => {
+        const isDark = document.body.classList.contains('dark');
+        applyTheme(isDark ? 'light' : 'dark');
+    };
+</script>
+</body>
+</html>

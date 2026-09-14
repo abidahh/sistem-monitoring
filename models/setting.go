@@ -1,0 +1,9 @@
+package models
+
+import "gorm.io/gorm"
+
+type Setting struct {
+	gorm.Model
+	Key   string `gorm:"uniqueIndex;not null" json:"key"`
+	Value string `gorm:"not null" json:"value"`
+}

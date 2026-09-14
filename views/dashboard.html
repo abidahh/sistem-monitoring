@@ -1,0 +1,1559 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Monitoring COD & Suhu Air</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-main: #f8fafc;
+            --sidebar-bg: #cee2f4;
+            --sidebar-border: #e2e8f0;
+            --sidebar-hover: #e2e8f0;
+            --sidebar-active: #627bd4;
+            --sidebar-text: #334155;
+            --card-border: #e2e8f0;
+            --soft-red-bg: #fef2f2;
+            --soft-red-text: #f24a4a;
+            --soft-teal-bg: #f0fdf4;
+            --soft-teal-text: #0d9459;
+            --card-bg: #ffffff;
+            --submenu-bg: #ffffff;
+            --heading-text: #1e293b;
+            --muted-text: #64748b;
+            --body-text: #334155;
+            --table-head-bg: #f1f5f9;
+            --table-head-text: #334155;
+            --table-bg: #fbfdff;
+            --input-bg: #ffffff;
+            --input-text: #1e293b;
+            --input-border: #dee2e6;
+            --btn-light-bg: #ffffff;
+            --btn-light-text: #334155;
+            --btn-light-border: #dee2e6;
+            --chart-grid: #f1f5f9;
+            --chart-text: #334155;
+            --header-bg-light: #ffffff;
+        }
+
+        body.dark {
+            --bg-main: #0f172a;
+            --sidebar-bg: #1e293b;
+            --sidebar-border: #334155;
+            --sidebar-hover: #334155;
+            --sidebar-active: #627bd4;
+            --sidebar-text: #cbd5e1;
+            --card-border: #334155;
+            --soft-red-bg: rgba(220, 38, 38, 0.15);
+            --soft-red-text: #f87171;
+            --soft-teal-bg: rgba(22, 163, 74, 0.15);
+            --soft-teal-text: #4ade80;
+            --card-bg: #1e293b;
+            --submenu-bg: #0f172a;
+            --heading-text: #f1f5f9;
+            --muted-text: #94a3b8;
+            --body-text: #cbd5e1;
+            --table-head-bg: #273449;
+            --table-head-text: #e2e8f0;
+            --table-bg: #1a2436;
+            --input-bg: #0f172a;
+            --input-text: #e2e8f0;
+            --input-border: #334155;
+            --btn-light-bg: #1e293b;
+            --btn-light-text: #cbd5e1;
+            --btn-light-border: #334155;
+            --chart-grid: #334155;
+            --chart-text: #94a3b8;
+            --header-bg-light: #1e293b;
+        }
+
+        body {
+            min-height: 100vh;
+            background-color: var(--bg-main);
+            color: var(--body-text);
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .sidebar {
+            width: 280px;
+            min-height: 100vh;
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--sidebar-border);
+            transition: margin-left 0.3s ease, transform 0.3s ease;
+            z-index: 1045;
+        }
+
+        .sidebar-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.5);
+            z-index: 1040;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .sidebar-brand { color: #0f172a !important; }
+
+        .nav-link {
+            color: var(--sidebar-text);
+            border-radius: 8px;
+            margin-bottom: 4px;
+            padding: 10px 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .nav-link:hover {
+            color: #0f172a;
+            background-color: var(--sidebar-hover);
+        }
+
+        .nav-link.active {
+            color: #ffffff !important;
+            background-color: var(--sidebar-active);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+        }
+
+        .nav-link.active i { color: #ffffff !important; }
+
+        .sub-menu {
+            padding: 14px;
+            background-color: var(--submenu-bg);
+            border-radius: 10px;
+            margin: 4px 0 10px 0;
+            border: 1px solid var(--sidebar-border);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+            display: none;
+        }
+
+        .content-area {
+            flex: 1;
+            padding: 30px;
+        }
+
+        /* ======= RESPONSIVE & SIDEBAR COLLAPSE ======= */
+        .card-body.p-0 { -webkit-overflow-scrolling: touch; }
+        .card-metric-dyn h2 { font-size: 1.9rem; }
+        .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .table-scroll .table { width: max-content; min-width: 100%; }
+        .chart-wrap { min-height: 380px; }
+
+        @media (max-width: 991.98px) {
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                bottom: 0;
+                min-height: 100vh;
+                overflow-y: auto;
+                transform: translateX(-100%);
+                box-shadow: 0 8px 30px rgba(0, 0, 0, 0.18);
+            }
+            body.sidebar-open .sidebar { transform: translateX(0); }
+            body.sidebar-open .sidebar-backdrop { opacity: 1; visibility: visible; }
+            body { overflow-x: hidden; }
+            .content-area { padding: 20px 16px; }
+            .topbar { padding: 0 12px; }
+        }
+
+        @media (min-width: 992px) {
+            body.sidebar-collapsed .sidebar { margin-left: -282px; }
+        }
+
+        @media (max-width: 575.98px) {
+            .card-metric-dyn h2 { font-size: 1.45rem; }
+            .topbar-title { font-size: 0.95rem; }
+            .status-online { display: none !important; }
+            .chart-wrap { min-height: 260px; }
+        }
+
+        .card-custom {
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+            background-color: var(--card-bg);
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+
+        .card-metric-dyn {
+            background: linear-gradient(135deg, var(--card-bg) 0%, var(--soft-teal-bg) 100%);
+            border-left: 5px solid #16a34a !important;
+            transition: all 0.3s ease;
+        }
+
+        .metric-value-safe { color: #16a34a; }
+        .metric-value-danger { color: #dc2626 !important; }
+
+        .badge-soft-success {
+            background-color: #dcfce7;
+            color: #15803d;
+            font-weight: 600;
+        }
+
+        .badge-soft-danger {
+            background-color: #fee2e2;
+            color: #b91c1c;
+            font-weight: 600;
+        }
+
+        .topbar {
+            height: 64px;
+            background: linear-gradient(90deg, #627bd4 0%, #0d9488 100%);
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            box-shadow: 0 2px 10px rgba(15, 23, 42, 0.15);
+            position: sticky;
+            top: 0;
+            z-index: 1030;
+        }
+
+        .topbar-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            letter-spacing: 0.2px;
+        }
+
+        .topbar-subtitle {
+            font-size: 0.72rem;
+            opacity: 0.85;
+        }
+
+        .topbar-clock {
+            font-size: 0.8rem;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            padding: 6px 14px;
+            font-weight: 600;
+        }
+
+        .status-online {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.78rem;
+            font-weight: 700;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #4ade80;
+        }
+
+        .mode-badge-sidebar {
+            font-size: 0.75rem;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: 700;
+            display: block;
+            text-align: center;
+        }
+        .mode-badge-real { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+        .mode-badge-dummy { background: #fef3c7; color: #b45309; border: 1px solid #fde047; }
+
+        body.dark .sidebar-brand { color: #f1f5f9 !important; }
+        body.dark .nav-link:hover { color: #f1f5f9; }
+        body.dark .text-slate-700, body.dark .text-slate-800 { color: var(--heading-text) !important; }
+        body.dark .text-muted { color: var(--muted-text) !important; }
+        body.dark .card-header.bg-white { background-color: var(--header-bg-light) !important; }
+        body.dark thead, body.dark .table-light {
+            --bs-table-bg: var(--table-head-bg) !important;
+            --bs-table-color: var(--table-head-text) !important;
+        }
+        .table { --bs-table-bg: var(--table-bg); }
+
+        .profile-banner {
+            height: 120px;
+            background: linear-gradient(120deg, #627bd4 0%, #0d9488 100%);
+        }
+
+        .profile-head { position: relative; }
+
+        .profile-avatar {
+            width: 86px;
+            height: 86px;
+            background: linear-gradient(135deg, #627bd4 0%, #0d9488 100%);
+            color: #fff;
+            font-size: 2rem;
+            font-weight: 700;
+            box-shadow: 0 6px 18px rgba(37, 99, 235, 0.35);
+            border: 4px solid #fff;
+            flex-shrink: 0;
+        }
+
+        body.dark .profile-avatar { border-color: #1e293b; }
+
+        .profile-avatar span { line-height: 1; }
+        body.dark .table {
+            --bs-table-bg: var(--table-bg) !important;
+            --bs-table-color: var(--body-text);
+            --bs-table-border-color: #2b3446;
+        }
+    </style>
+</head>
+<body>
+
+<header class="topbar">
+    <div class="d-flex align-items-center gap-3">
+        <button type="button" class="d-flex align-items-center justify-content-center btn btn-sm border-0 text-white flex-shrink-0" id="sidebarToggle" title="Buka/Tutup Menu" style="width:36px; height:36px; background: rgba(255,255,255,0.15);">
+            <i class="bi bi-list fs-4"></i>
+        </button>
+        <i class="bi bi-water fs-3"></i>
+        <div>
+            <div class="topbar-title">Sistem Monitoring COD &amp; Suhu Air</div>
+            <div class="topbar-subtitle d-none d-md-block">Real-Time Water Quality Monitoring System</div>
+        </div>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <button type="button" class="theme-toggle-btn btn btn-sm border-0 text-white" id="themeToggle" title="Ganti Mode Terang/Gelap" style="background: rgba(255,255,255,0.15);">
+            <i class="bi bi-moon-stars" id="themeToggleIcon"></i>
+        </button>
+        <button type="button" class="theme-toggle-btn btn btn-sm border-0 text-white" id="fullscreenToggle" title="Mode Full Layar" style="background: rgba(255,255,255,0.15);">
+            <i class="bi bi-arrows-fullscreen" id="fullscreenIcon"></i>
+        </button>
+        <span class="status-online"><span class="status-dot"></span> Online</span>
+        <span class="topbar-clock d-none d-md-inline" id="topbarClock">--</span>
+    </div>
+</header>
+
+<div class="d-flex">
+    <!-- SIDEBAR -->
+    <div class="sidebar d-flex flex-column p-3">
+        <a href="#" class="d-flex align-items-center mb-4 me-md-auto sidebar-brand text-decoration-none fs-5 fw-bold px-2 pt-2">
+            <i class="bi bi-water me-2 text-primary"></i> COD Monitor
+        </a>
+        <hr class="mt-0 border-secondary opacity-25">
+        <ul class="nav nav-pills flex-column mb-auto">
+            <li class="nav-item">
+                <a class="nav-link active" id="menuHome" onclick="switchTab('home')">
+                    <i class="bi bi-activity me-2"></i> Halaman Utama
+                </a>
+            </li>
+            <li>
+                <a class="nav-link" id="menuHistory" onclick="switchTab('history')">
+                    <i class="bi bi-table me-2"></i> Riwayat Data
+                </a>
+            </li>
+            <li>
+                <a class="nav-link" id="menuNotif" onclick="switchTab('notif')">
+                    <i class="bi bi-bell me-2"></i> Notifikasi
+                </a>
+            </li>
+
+            <li class="nav-item d-none" id="menuApproval">
+                <a class="nav-link" href="/admin">
+                    <i class="bi bi-shield-lock me-2"></i> Panel Admin
+                </a>
+            </li>
+
+            <!-- PENGATURAN -->
+            <li>
+                <a class="nav-link d-flex justify-content-between align-items-center" id="menuSettingsParent" onclick="toggleSubMenu('settingsSubMenu', 'settingsChevron')">
+                    <span><i class="bi bi-gear me-2"></i> Pengaturan</span>
+                    <i class="bi bi-chevron-down fs-7" id="settingsChevron"></i>
+                </a>
+                <div class="sub-menu" id="settingsSubMenu">
+                    <label class="form-label text-slate-700 small mb-1 fw-bold">Sumber Data</label>
+                    <div class="btn-group btn-group-sm w-100 mb-2" role="group">
+                        <button type="button" class="btn btn-outline-primary fw-bold active" id="btnModeReal" onclick="switchDataMode('real')">
+                            Real (USB)
+                        </button>
+                        <button type="button" class="btn btn-outline-warning fw-bold text-dark" id="btnModeDummy" onclick="switchDataMode('dummy')">
+                            Simulasi
+                        </button>
+                    </div>
+                    <div id="sidebarModeBadge" class="mode-badge-sidebar mode-badge-real mb-3">
+                        ✓ Menggunakan Data Hardware
+                    </div>
+
+                    <label class="form-label text-slate-700 small mb-1 fw-bold d-flex justify-content-between">
+                        <span>Interval Pembacaan</span>
+                        <span class="text-primary fw-bold" id="sidebarSliderValue">3 Detik</span>
+                    </label>
+                    <input type="range" class="form-range" id="sidebarIntervalRange" min="1" max="60" value="3" oninput="onSliderChange(this.value)">
+                    <div class="d-flex justify-content-between text-muted mb-3" style="font-size: 0.72rem;">
+                        <span>1s</span>
+                        <span>30s</span>
+                        <span>60s</span>
+                    </div>
+
+                    <div id="avgSettingWrap" class="mb-3">
+                        <label class="form-label text-slate-700 small mb-1 fw-bold d-flex justify-content-between">
+                            <span>Interval Rata-rata</span>
+                            <span class="text-primary fw-bold" id="sidebarAvgValue">5 Menit</span>
+                        </label>
+                        <input type="number" class="form-control form-control-sm" id="sidebarAvgMinutes" min="1" max="120" value="5" oninput="document.getElementById('sidebarAvgValue').innerText = (this.value || 0) + ' Menit'">
+                        <div class="form-text small mt-1">Rata-rata per jendela waktu (1–120 menit). Berlaku untuk kartu &amp; riwayat rata-rata.</div>
+                    </div>
+
+                    <button class="btn btn-primary btn-sm w-100 fw-bold py-2 shadow-sm" onclick="saveSettings()">
+                        <i class="bi bi-check2 me-1"></i> Simpan Pengaturan
+                    </button>
+                    <div id="sidebarToast" class="text-success small text-center mt-2 fw-semibold d-none">✓ Pengaturan tersimpan</div>
+                </div>
+            </li>
+
+            <li>
+                <a class="nav-link" id="menuProfile" onclick="switchTab('profile')">
+                    <i class="bi bi-person-circle me-2"></i> Profil
+                </a>
+            </li>
+        </ul>
+        <hr class="border-secondary opacity-25">
+        <button class="btn btn-outline-danger w-100 fw-bold text-start px-3 py-2" onclick="logout()">
+            <i class="bi bi-box-arrow-right me-2"></i> Logout
+        </button>
+    </div>
+
+    <div class="sidebar-backdrop" onclick="closeSidebarMobile()"></div>
+
+    <!-- MAIN CONTENT AREA -->
+    <div class="content-area">
+
+        <!-- TAB 1: HALAMAN UTAMA -->
+        <div id="tabHome">
+            <h4 class="fw-bold mb-3 text-slate-800">Monitoring Real-Time</h4>
+
+            <div class="row g-3 mb-4" id="metricCardsContainer">
+                <div class="col-12 text-muted small">Memuat data sensor...</div>
+            </div>
+
+            <div class="card card-custom mb-4">
+                <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold fs-6 text-slate-700" id="avgCardTitle"><i class="bi bi-bar-chart me-2 text-primary"></i>Rata-rata 5 Menit Terakhir</h5>
+                    <span class="badge bg-light text-secondary border px-3 py-2 fw-semibold" id="avgWindowBadge">Jendela 5 Menit</span>
+                </div>
+                <div class="card-body p-4" id="avgCardBody">
+                    <div class="text-muted small">Memuat rata-rata 5 menit...</div>
+                </div>
+            </div>
+
+            <div class="card card-custom">
+                <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold fs-6 text-slate-700">Grafik Pemantauan Real-Time</h5>
+                    <span class="badge bg-light text-secondary border px-3 py-2 fw-semibold" id="intervalBadge">Auto Refresh (3s)</span>
+                </div>
+                <div class="card-body p-4">
+                    <div class="chart-wrap"><canvas id="monitoringChart" style="max-height: 380px;"></canvas></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: RIWAYAT DATA -->
+        <div id="tabHistory" class="d-none">
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                <h4 class="fw-bold mb-0" id="historyHeaderTitle">Riwayat Data Sensor</h4>
+                <div id="historyHeaderBtns" class="d-flex gap-2">
+                    <div id="historyExportBtns" class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-success btn-sm fw-semibold px-3 shadow-sm" onclick="exportWithFilter('excel')">
+                            <i class="bi bi-file-earmark-excel me-1"></i> Ekspor Excel
+                        </button>
+                        <button type="button" class="btn btn-outline-danger btn-sm fw-semibold px-3 shadow-sm" onclick="exportWithFilter('pdf')">
+                            <i class="bi bi-file-earmark-pdf me-1"></i> Ekspor PDF
+                        </button>
+                    </div>
+                    <button type="button" class="btn btn-outline-primary btn-sm fw-semibold px-3 shadow-sm" id="btnShowAvgHistory" onclick="showAvgHistoryView()">
+                        <i class="bi bi-bar-chart me-1"></i> Riwayat Rata-rata
+                    </button>
+                    <div id="avgHeaderBtns" class="d-flex gap-2 d-none">
+                        <button type="button" class="btn btn-outline-dark btn-sm fw-semibold px-3 shadow-sm" onclick="backToHistoryView()">
+                            <i class="bi bi-arrow-left me-1"></i> Kembali ke Riwayat Data
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card card-custom mb-3" id="historyFilterCard">
+                <div class="card-body p-3">
+                    <form id="filterForm" class="row g-2 align-items-center">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted mb-1">Dari Tanggal</label>
+                            <input type="date" id="startDate" class="form-control form-control-sm border-slate-200" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted mb-1">Sampai Tanggal</label>
+                            <input type="date" id="endDate" class="form-control form-control-sm border-slate-200" required>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end gap-2" style="margin-top: 28px;">
+                            <button type="submit" class="btn btn-primary btn-sm fw-bold flex-grow-1 shadow-sm">
+                                <i class="bi bi-filter me-1"></i> Cari Data
+                            </button>
+                            <button type="button" class="btn btn-light btn-sm text-secondary border" onclick="resetFilter()">Reset</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card card-custom" id="historyTableCard">
+                <div class="card-body p-0 table-scroll" style="max-height: 450px; overflow-y: auto;">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light sticky-top">
+                            <tr id="historyTableHeader">
+                                <th class="py-3 ps-3">No</th>
+                                <th class="py-3">Waktu</th>
+                                <th class="py-3 text-center">Status</th>
+                                <th class="py-3">Memuat kolom...</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody">
+                            <tr><td colspan="5" class="text-center py-4 text-muted">Memuat data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- SUB-VIEW: RIWAYAT RATA-RATA 5 MENIT -->
+            <div id="avgHistorySection" class="d-none">
+                <div class="card card-custom mb-3">
+                    <div class="card-body p-3">
+                        <form id="avgFilterForm" class="row g-2 align-items-center">
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold text-muted mb-1">Dari Tanggal</label>
+                                <input type="date" id="avgStartDate" class="form-control form-control-sm border-slate-200" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold text-muted mb-1">Sampai Tanggal</label>
+                                <input type="date" id="avgEndDate" class="form-control form-control-sm border-slate-200" required>
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end gap-2" style="margin-top: 28px;">
+                                <button type="submit" class="btn btn-primary btn-sm fw-bold flex-grow-1 shadow-sm">
+                                    <i class="bi bi-filter me-1"></i> Cari Data
+                                </button>
+                                <button type="button" class="btn btn-light btn-sm text-secondary border" onclick="resetAvgFilter()">Reset</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card card-custom">
+                    <div class="card-body p-0 table-scroll" style="max-height: 450px; overflow-y: auto;">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light sticky-top">
+                                <tr id="avgHistoryTableHeader">
+                                    <th class="py-3 ps-3">No</th>
+                                    <th class="py-3">Waktu Bucket</th>
+                                    <th class="py-3">Memuat kolom...</th>
+                                </tr>
+                            </thead>
+                            <tbody id="avgHistoryTableBody">
+                                <tr><td colspan="3" class="text-center py-4 text-muted">Memuat data...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: NOTIFIKASI -->
+        <div id="tabNotif" class="d-none">
+            <h4 class="fw-bold mb-3">Riwayat Notifikasi Ambang Batas</h4>
+            <div class="card card-custom">
+                <div class="card-body p-0 table-scroll" style="max-height: 500px; overflow-y: auto;">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th class="py-3 ps-3">Waktu</th>
+                                <th class="py-3">Tipe</th>
+                                <th class="py-3">Nilai</th>
+                                <th class="py-3">Batas</th>
+                                <th class="py-3">Pesan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="notifTableBody">
+                            <tr><td colspan="5" class="text-center py-4 text-muted">Memuat riwayat notifikasi...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 4: PROFIL -->
+        <div id="tabProfile" class="d-none">
+            <div class="row justify-content-center">
+                <div class="col-lg-9 col-xl-8">
+                    <div class="card card-custom mb-4 overflow-hidden border-0 shadow">
+                        <div class="profile-banner"></div>
+                        <div class="px-4 pb-4">
+                            <div class="d-flex flex-column flex-sm-row align-items-center gap-3 mt-n5 profile-head">
+                                <div class="profile-avatar rounded-circle d-flex align-items-center justify-content-center">
+                                    <span id="profileAvatar">--</span>
+                                </div>
+                                <div class="text-center text-sm-start mt-4 mt-sm-0">
+                                    <h4 class="fw-bold mb-0 text-slate-800" id="profileName">--</h4>
+                                    <div class="text-muted small" id="profileRoleBadge"></div>
+                                </div>
+                                <div class="ms-auto text-sm-end text-center">
+                                    <div class="text-muted small">Terdaftar Sejak</div>
+                                    <div class="fw-semibold text-slate-700" id="profileCreated">--</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <div class="card card-custom h-100">
+                                <div class="card-body">
+                                    <div class="text-muted small fw-bold text-uppercase mb-1">Username</div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="bi bi-person text-primary"></i>
+                                        <span class="fs-5 fw-semibold text-slate-800" id="profileUsername">--</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card card-custom h-100">
+                                <div class="card-body">
+                                    <div class="text-muted small fw-bold text-uppercase mb-1">Role Akses</div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="bi bi-shield-lock text-info"></i>
+                                        <span class="fs-5 fw-semibold text-slate-800" id="profileRole">--</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card card-custom h-100">
+                                <div class="card-body">
+                                    <div class="text-muted small fw-bold text-uppercase mb-1">Tanggal Bergabung</div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="bi bi-calendar-check text-success"></i>
+                                        <span class="fs-5 fw-semibold text-slate-800" id="profileJoined">--</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card card-custom mt-4">
+                        <div class="card-header bg-transparent py-3 d-flex align-items-center gap-2">
+                            <i class="bi bi-pencil-square text-primary"></i>
+                            <h5 class="mb-0 fw-bold fs-6 text-slate-700">Ubah Profil</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="profileForm" class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold text-slate-700">Nama Lengkap</label>
+                                    <input type="text" class="form-control" id="editName" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold text-slate-700">Username</label>
+                                    <input type="text" class="form-control" id="editUsername" disabled>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold text-slate-700">Password Lama</label>
+                                    <input type="password" class="form-control" id="editCurrentPass" placeholder="Kosongkan jika tidak ganti password">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold text-slate-700">Password Baru</label>
+                                    <input type="password" class="form-control" id="editNewPass" placeholder="Minimal 6 karakter">
+                                </div>
+                                <div class="col-12 d-flex align-items-center gap-2">
+                                    <button type="submit" class="btn btn-primary fw-bold px-4" id="profileSubmitBtn">
+                                        <i class="bi bi-check2 me-1"></i> Simpan Perubahan
+                                    </button>
+                                    <span id="profileFormMsg" class="small fw-semibold"></span>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    let chart;
+    let refreshIntervalId;
+    let currentInterval = 3;
+    let activeSensors = [];
+    let isDummyMode = false;
+    let dummyHistoryBuffer = [];
+    let lastDummyValues = {}; // Menyimpan angka terakhir agar perubahan grafik tidak jomplang
+    let dummyApiKey = ''; // API key untuk menyimpan data simulasi ke backend
+    let avgHistoryView = false; // Tampilan sub-view riwayat rata-rata di tab Riwayat Data
+    let isAdminUser = false; // Role user login (admin dapat mengatur jendela rata-rata)
+
+    function switchTab(tabName) {
+        const tabs = ['home', 'history', 'notif', 'profile'];
+        tabs.forEach(t => {
+            const tabElem = document.getElementById(`tab${capitalize(t)}`);
+            const menuElem = document.getElementById(`menu${capitalize(t)}`);
+            if (tabElem) tabElem.classList.add('d-none');
+            if (menuElem) menuElem.classList.remove('active');
+        });
+
+        const activeTab = document.getElementById(`tab${capitalize(tabName)}`);
+        const activeMenu = document.getElementById(`menu${capitalize(tabName)}`);
+        if (activeTab) activeTab.classList.remove('d-none');
+        if (activeMenu) activeMenu.classList.add('active');
+
+        if (tabName === 'history') {
+            if (avgHistoryView) fetchAvgHistoryData();
+            else fetchHistoryData();
+        }
+        if (tabName === 'notif') fetchNotificationLogs();
+        if (tabName === 'profile') fetchUserProfile();
+
+        localStorage.setItem('codActiveTab', tabName);
+    }
+
+    function capitalize(str) {
+        return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    function toggleSubMenu(subMenuId, chevronId) {
+        const subMenu = document.getElementById(subMenuId);
+        const chevron = document.getElementById(chevronId);
+        if (subMenu.style.display === "block") {
+            subMenu.style.display = "none";
+            chevron.className = "bi bi-chevron-down fs-7";
+        } else {
+            subMenu.style.display = "block";
+            chevron.className = "bi bi-chevron-up fs-7";
+        }
+    }
+
+    function applyTheme(theme) {
+        const isDark = (theme === 'dark');
+        document.body.classList.toggle('dark', isDark);
+        localStorage.setItem('theme', theme);
+        
+        const icon = document.getElementById('themeToggleIcon');
+        if (icon) icon.className = isDark ? 'bi bi-sun' : 'bi bi-moon-stars';
+
+        if (chart) {
+            const gridColor = isDark ? '#334155' : '#f1f5f9';
+            const textColor = isDark ? '#94a3b8' : '#334155';
+            chart.options.scales.x.ticks.color = textColor;
+            chart.options.scales.y.ticks.color = textColor;
+            chart.options.scales.y.grid.color = gridColor;
+            chart.update();
+        }
+    }
+
+    document.getElementById('themeToggle').addEventListener('click', () => {
+        const currentTheme = document.body.classList.contains('dark') ? 'dark' : 'light';
+        applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
+    });
+
+    document.getElementById('fullscreenToggle').addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(() => {});
+            document.getElementById('fullscreenIcon').className = 'bi bi-fullscreen-exit';
+        } else {
+            document.exitFullscreen();
+            document.getElementById('fullscreenIcon').className = 'bi bi-arrows-fullscreen';
+        }
+    });
+
+    // --- SIDEBAR TOGGLE: lipat (desktop) / off-canvas (mobile) ---
+    const isMobileView = () => window.innerWidth < 992;
+
+    function applySidebarState() {
+        if (isMobileView()) {
+            document.body.classList.remove('sidebar-collapsed');
+            document.body.classList.remove('sidebar-open');
+        } else {
+            document.body.classList.remove('sidebar-open');
+            if (localStorage.getItem('codSidebarCollapsed') === '1') {
+                document.body.classList.add('sidebar-collapsed');
+            } else {
+                document.body.classList.remove('sidebar-collapsed');
+            }
+        }
+    }
+
+    function closeSidebarMobile() {
+        document.body.classList.remove('sidebar-open');
+    }
+
+    document.getElementById('sidebarToggle').addEventListener('click', () => {
+        if (isMobileView()) {
+            document.body.classList.toggle('sidebar-open');
+        } else {
+            const collapsed = document.body.classList.toggle('sidebar-collapsed');
+            localStorage.setItem('codSidebarCollapsed', collapsed ? '1' : '0');
+        }
+    });
+
+    document.querySelectorAll('.sidebar .nav-link, .sidebar .btn').forEach(el => {
+        el.addEventListener('click', closeSidebarMobile);
+    });
+
+    window.addEventListener('resize', applySidebarState);
+    applySidebarState();
+
+    function switchDataMode(mode) {
+        const btnReal = document.getElementById('btnModeReal');
+        const btnDummy = document.getElementById('btnModeDummy');
+        const badge = document.getElementById('sidebarModeBadge');
+
+        if (mode === 'dummy') {
+            isDummyMode = true;
+            localStorage.setItem('codDummyMode', '1');
+            btnReal.classList.remove('active');
+            btnDummy.classList.add('active');
+            badge.className = 'mode-badge-sidebar mode-badge-dummy mb-3';
+            badge.innerText = '⚠ Mode Simulasi Data';
+            ensureDummyApiKey();
+        } else {
+            isDummyMode = false;
+            localStorage.removeItem('codDummyMode');
+            btnDummy.classList.remove('active');
+            btnReal.classList.add('active');
+            badge.className = 'mode-badge-sidebar mode-badge-real mb-3';
+            badge.innerText = '✓ Menggunakan Data Hardware';
+        }
+        fetchSensorData();
+    }
+
+    async function ensureDummyApiKey() {
+        if (dummyApiKey) return;
+        try {
+            const res = await fetch('/api/sensor/apikey');
+            const result = await res.json();
+            dummyApiKey = result.api_key || '';
+        } catch (err) {
+            dummyApiKey = '';
+        }
+    }
+
+    // Simpan data simulasi ke backend agar riwayat & ekspor memiliki data.
+    function persistDummyReading(sensorTypeId, value) {
+        if (!dummyApiKey) return;
+        fetch('/api/sensor', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-API-Key': dummyApiKey },
+            body: JSON.stringify({ sensor_type_id: sensorTypeId, value: value, sumber: 'simulasi' })
+        }).catch(() => {});
+    }
+
+    function initChart() {
+        const ctx = document.getElementById('monitoringChart').getContext('2d');
+        chart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: [], datasets: [] },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 600, easing: 'easeOutQuad' }, // Animasi transisi halus
+                plugins: { legend: { labels: { usePointStyle: true } } },
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { grid: { color: '#f1f5f9' } }
+                }
+            }
+        });
+    }
+
+    function syncChartDatasets() {
+        const datasets = activeSensors.map(st => ({
+            _sensorId: st.ID,
+            label: `${st.nama} (${st.unit})`,
+            borderColor: st.warna,
+            backgroundColor: hexToRgba(st.warna, 0.08),
+            borderWidth: 2,
+            pointRadius: 3,
+            data: [],
+            tension: 0.4, // Kurva grafik lebih mulus
+            fill: true
+        }));
+        chart.data.datasets = datasets;
+        chart.update();
+    }
+
+    function hexToRgba(hex, alpha) {
+        const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex || '#0d9488');
+        if (!m) return `rgba(13,148,136,${alpha})`;
+        return `rgba(${parseInt(m[1],16)}, ${parseInt(m[2],16)}, ${parseInt(m[3],16)}, ${alpha})`;
+    }
+
+    // Memperlebar rentang sumbu Y agar perubahan kecil tidak membuat grafik naik-turun tajam.
+    // Basis: 1.2x batas maksimum tertinggi sensor, atau 1.3x nilai tertinggi data saat ini.
+    function updateYAxisRange() {
+        if (activeSensors.length === 0 || !chart) return;
+
+        let maxLimit = 100;
+        let dataMax = 0;
+
+        activeSensors.forEach((st, idx) => {
+            const limit = Number(st.nilai_max) || 0;
+            if (limit > 0 && limit > maxLimit) maxLimit = limit;
+
+            const ds = chart.data.datasets[idx];
+            if (ds && ds.data.length > 0) {
+                const m = Math.max(...ds.data.filter(v => v !== null && v !== undefined));
+                if (m > dataMax) dataMax = m;
+            }
+        });
+
+        const rawMax = Math.max(maxLimit * 1.2, dataMax * 1.3);
+        let yMax;
+        if (rawMax <= 10) {
+            yMax = Math.ceil(rawMax);
+        } else if (rawMax <= 50) {
+            yMax = Math.ceil(rawMax / 5) * 5;
+        } else if (rawMax <= 200) {
+            yMax = Math.ceil(rawMax / 10) * 10;
+        } else {
+            yMax = Math.ceil(rawMax / 50) * 50;
+        }
+
+        chart.options.scales.y.min = 0;
+        chart.options.scales.y.max = yMax;
+    }
+
+    function renderMetricCards() {
+        const container = document.getElementById('metricCardsContainer');
+        if (activeSensors.length === 0) return;
+
+        const colClass = activeSensors.length > 2 ? 'col-md-6 col-lg-4' : 'col-md-6';
+        container.innerHTML = activeSensors.map(st => `
+            <div class="${colClass}">
+                <div class="card card-custom card-metric-dyn p-3" id="card_${st.ID}">
+                    <div class="card-body p-3">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h6 class="text-muted fw-bold mb-0 small">${st.nama.toUpperCase()}</h6>
+                                    <span class="badge badge-soft-success px-3 py-1" id="badge_${st.ID}">Aman</span>
+                                </div>
+                                <h2 class="fw-bold my-2 metric-value-safe" id="current_${st.ID}">-- ${st.unit}</h2>
+                                <span class="text-muted small">Batas Maks: <strong id="limit_${st.ID}">${Number(st.nilai_max).toFixed(1)} ${st.unit}</strong></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    async function fetchSensorData() {
+        fetchAverage5();
+        try {
+            const res = await fetch('/api/sensor/latest');
+            const result = await res.json();
+            let dataList = result.data || [];
+
+            if (result.sensor_types && activeSensors.length === 0) {
+                activeSensors = result.sensor_types;
+                renderMetricCards();
+                syncChartDatasets();
+                updateYAxisRange();
+            }
+
+            // A. MODE DUMMY DENGAN PERGERAKAN HALUS (SMOOTH WALK)
+            if (isDummyMode && activeSensors.length > 0) {
+                const nowTime = new Date().toLocaleTimeString();
+                const nowDateTime = new Date().toLocaleString('id-ID');
+
+                activeSensors.forEach(st => {
+                    if (lastDummyValues[st.ID] === undefined) {
+                        // Nilai awal jika baru dinyalakan
+                        lastDummyValues[st.ID] = st.nama.toLowerCase().includes('suhu') ? 26.5 : 55.0;
+                    }
+
+                    // Fluktuasi kecil berkisar ±0.2 hingga ±0.6 agar grafik tidak jomplang
+                    let delta = (Math.random() - 0.48) * 0.8;
+                    let newVal = parseFloat((lastDummyValues[st.ID] + delta).toFixed(1));
+
+                    // Menjaga batas wajar
+                    if (st.nama.toLowerCase().includes('suhu')) {
+                        if (newVal < 23) newVal = 23.5;
+                        if (newVal > 32) newVal = 31.5;
+                    } else {
+                        if (newVal < 35) newVal = 36.0;
+                        if (newVal > 95) newVal = 94.0;
+                    }
+
+                    lastDummyValues[st.ID] = newVal;
+
+                    persistDummyReading(st.ID, newVal);
+
+                    dummyHistoryBuffer.push({
+                        time: nowTime,
+                        datetime: nowDateTime,
+                        sensor_type_id: st.ID,
+                        value: newVal
+                    });
+                });
+
+                if (dummyHistoryBuffer.length > activeSensors.length * 12) {
+                    dummyHistoryBuffer = dummyHistoryBuffer.slice(-activeSensors.length * 12);
+                }
+
+                const timeMap = {};
+                dummyHistoryBuffer.forEach(item => {
+                    if (!timeMap[item.time]) timeMap[item.time] = {};
+                    timeMap[item.time][item.sensor_type_id] = item.value;
+                });
+
+                const uniqueTimes = Object.keys(timeMap);
+                chart.data.labels = uniqueTimes;
+
+                activeSensors.forEach((st, idx) => {
+                    if (chart.data.datasets[idx]) {
+                        chart.data.datasets[idx].data = uniqueTimes.map(t => timeMap[t][st.ID] ?? null);
+                    }
+                });
+                updateYAxisRange();
+                chart.update();
+
+                activeSensors.forEach(s => {
+                    const el = document.getElementById(`current_${s.ID}`);
+                    if (el && lastDummyValues[s.ID] !== undefined) {
+                        el.innerText = `${lastDummyValues[s.ID]} ${s.unit}`;
+                    }
+                });
+                return;
+            }
+
+            // B. MODE REAL-TIME HARDWARE (BEBAS DATA PALSU)
+            if (dataList.length === 0) {
+                chart.data.labels = [];
+                chart.data.datasets.forEach(ds => ds.data = []);
+                chart.update();
+                activeSensors.forEach(s => {
+                    const el = document.getElementById(`current_${s.ID}`);
+                    if (el) el.innerText = `-- ${s.unit}`;
+                });
+                return;
+            }
+
+            const timeMap = {};
+            dataList.forEach(item => {
+                const timeStr = new Date(item.created_at).toLocaleTimeString();
+                if (!timeMap[timeStr]) timeMap[timeStr] = {};
+                timeMap[timeStr][item.sensor_type_id] = item.value;
+            });
+
+            const uniqueTimes = Object.keys(timeMap).reverse();
+            chart.data.labels = uniqueTimes;
+
+            activeSensors.forEach((st, idx) => {
+                if (chart.data.datasets[idx]) {
+                    chart.data.datasets[idx].data = uniqueTimes.map(t => timeMap[t][st.ID] ?? null);
+                }
+            });
+            updateYAxisRange();
+            chart.update();
+
+            const latestTime = uniqueTimes[uniqueTimes.length - 1];
+            if (latestTime && timeMap[latestTime]) {
+                activeSensors.forEach(s => {
+                    const val = timeMap[latestTime][s.ID];
+                    const el = document.getElementById(`current_${s.ID}`);
+                    if (el) el.innerText = val !== undefined ? `${val} ${s.unit}` : `-- ${s.unit}`;
+                });
+            }
+
+        } catch (err) {
+            console.error("Gagal mengambil data:", err);
+        }
+    }
+
+    async function fetchHistoryData() {
+    const tbody = document.getElementById('historyTableBody');
+    if (!tbody) return;
+
+    // A. JIKA MODE DUMMY TANPA FILTER TANGGAL: Tampilkan buffer simulasi lokal.
+    // Bila ada filter tanggal, gunakan DB (data simulasi sudah disimpan ke backend).
+    if (isDummyMode && getDateFilterParams() === '') {
+        if (dummyHistoryBuffer.length === 0) {
+            const headerEl = document.getElementById('historyTableHeader');
+            headerEl.innerHTML = `<th class="py-3 ps-3">No</th><th class="py-3">Waktu</th><th class="py-3 text-center">Status</th>` +
+                activeSensors.map(s => `<th class="py-3 text-center">${s.nama} <span class="text-secondary fw-normal">(${s.unit})</span></th>`).join('');
+            tbody.innerHTML = `<tr><td colspan="${activeSensors.length + 3}" class="text-center py-4 text-muted">Belum ada data simulasi. Tunggu beberapa detik...</td></tr>`;
+            return;
+        }
+
+        // Kelompokkan data dummy berdasarkan waktu
+        const timeMap = {};
+        dummyHistoryBuffer.forEach(item => {
+            if (!timeMap[item.time]) timeMap[item.time] = {};
+            timeMap[item.time][item.sensor_type_id] = item.value;
+            timeMap[item.time]._dt = item.datetime || '';
+        });
+
+        const uniqueTimes = Object.keys(timeMap).reverse();
+        tbody.innerHTML = uniqueTimes.map((t, idx) => {
+            const cols = activeSensors.map(s => {
+                const v = timeMap[t][s.ID];
+                return `<td class="text-center"><span class="badge bg-light text-dark border">${v !== undefined ? `${v} ${s.unit}` : '--'}</span></td>`;
+            }).join('');
+            return `<tr><td class="ps-3 text-secondary">${idx + 1}</td><td>${timeMap[t]._dt}</td><td class="text-center"><span class="badge badge-soft-warning"><i class="bi bi-circle-fill me-1"></i>Simulasi</span></td>${cols}</tr>`;
+        }).join('');
+        return;
+    }
+
+    // B. JIKA MODE REAL-TIME: Ambil data resmi dari SQLite Backend
+    try {
+        const params = new URLSearchParams({ page: '1', limit: '50' });
+        const filter = getDateFilterParams();
+        if (filter !== '') {
+            filter.split('&').forEach(part => {
+                const [k, v] = part.split('=');
+                if (k && v) params.append(k, v);
+            });
+        }
+        const res = await fetch(`/api/sensor/history?${params.toString()}`);
+        const result = await res.json();
+        const dataList = result.data || [];
+        
+        const headerEl = document.getElementById('historyTableHeader');
+        headerEl.innerHTML = `<th class="py-3 ps-3">No</th><th class="py-3">Waktu</th><th class="py-3 text-center">Status</th>` +
+            activeSensors.map(s => `<th class="py-3 text-center">${s.nama} <span class="text-secondary fw-normal">(${s.unit})</span></th>`).join('');
+
+        if (dataList.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="${activeSensors.length + 3}" class="text-center py-4 text-muted">Belum ada riwayat data asli di database. Dicolokkan USB sensor untuk mulai merekam.</td></tr>`;
+            return;
+        }
+
+        // Cross-tab: kelompokkan pembacaan per detik menjadi satu baris,
+        // semua sensor terisi di kolomnya masing-masing (bukan "--" kosong).
+        const buckets = {};
+        const order = [];
+        dataList.forEach(item => {
+            const key = new Date(item.created_at).toISOString().slice(0, 19);
+            if (!buckets[key]) {
+                buckets[key] = { vals: {}, anomaly: false };
+                order.push(key);
+            }
+            const b = buckets[key];
+            b.vals[item.sensor_type_id] = { value: item.value, is_anomaly: !!item.is_anomaly };
+            if (item.is_anomaly) b.anomaly = true;
+        });
+
+        tbody.innerHTML = order.map((k, idx) => {
+            const b = buckets[k];
+            const d = new Date(k);
+            const timeTxt = `${d.toLocaleDateString('id-ID')} ${d.toLocaleTimeString('id-ID')}`;
+            const statusCell = b.anomaly
+                ? '<span class="badge badge-soft-danger"><i class="bi bi-exclamation-triangle me-1"></i>Lonjakan</span>'
+                : '<span class="badge badge-soft-success">Normal</span>';
+            const cols = activeSensors.map(s => {
+                const v = b.vals[s.ID];
+                if (!v) return `<td class="text-center text-muted">--</td>`;
+                const valTxt = `${v.value} ${s.unit}`;
+                const badge = v.is_anomaly
+                    ? `<span class="badge badge-soft-danger border-danger border-1">${valTxt} <i class="bi bi-exclamation-triangle"></i></span>`
+                    : `<span class="badge bg-light text-dark border">${valTxt}</span>`;
+                return `<td class="text-center">${badge}</td>`;
+            }).join('');
+            return `<tr><td class="ps-3 text-secondary">${idx + 1}</td><td>${timeTxt}</td><td class="text-center">${statusCell}</td>${cols}</tr>`;
+        }).join('');
+        
+    } catch (err) {
+        console.error("Gagal memuat histori:", err);
+    }
+}
+
+    // --- RATA-RATA 5 MENIT ---
+    function showAvgHistoryView() {
+        avgHistoryView = true;
+        document.getElementById('historyHeaderTitle').innerText = 'Riwayat Rata-rata';
+        document.getElementById('historyExportBtns').classList.add('d-none');
+        document.getElementById('btnShowAvgHistory').classList.add('d-none');
+        document.getElementById('avgHeaderBtns').classList.remove('d-none');
+        document.getElementById('historyFilterCard').classList.add('d-none');
+        document.getElementById('historyTableCard').classList.add('d-none');
+        document.getElementById('avgHistorySection').classList.remove('d-none');
+        fetchAvgHistoryData();
+    }
+
+    function backToHistoryView() {
+        avgHistoryView = false;
+        document.getElementById('historyHeaderTitle').innerText = 'Riwayat Data Sensor';
+        document.getElementById('historyExportBtns').classList.remove('d-none');
+        document.getElementById('btnShowAvgHistory').classList.remove('d-none');
+        document.getElementById('avgHeaderBtns').classList.add('d-none');
+        document.getElementById('historyFilterCard').classList.remove('d-none');
+        document.getElementById('historyTableCard').classList.remove('d-none');
+        document.getElementById('avgHistorySection').classList.add('d-none');
+        fetchHistoryData();
+    }
+
+    async function fetchAverage5() {
+        try {
+            const res = await fetch('/api/sensor/average/latest');
+            if (!res.ok) return;
+            const data = await res.json();
+            const win = data.window_minutes || 5;
+            document.getElementById('avgCardTitle').innerText = `Rata-rata ${win} Menit Terakhir`;
+            document.getElementById('avgWindowBadge').innerText = `Jendela ${win} Menit`;
+            const body = document.getElementById('avgCardBody');
+            const avgs = data.averages || [];
+            if (avgs.length === 0) {
+                body.innerHTML = `<div class="text-muted small">Belum ada data dalam ${win} menit terakhir.</div>`;
+                return;
+            }
+            body.innerHTML = avgs.map(a => {
+                const over = a.nilai_max > 0 && a.average > a.nilai_max;
+                const valueClass = over ? 'metric-value-danger' : 'metric-value-safe';
+                const badge = over
+                    ? '<span class="badge badge-soft-danger ms-2">Melebihi Batas</span>'
+                    : '<span class="badge badge-soft-success ms-2">Aman</span>';
+                return `
+                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                        <div>
+                            <div class="fw-bold text-slate-700" style="display:flex;align-items:center;gap:8px;">
+                                <span style="width:12px;height:12px;border-radius:50%;background:${a.warna};display:inline-block;"></span>
+                                ${a.nama}
+                                ${badge}
+                            </div>
+                            <div class="small text-muted">${a.count} pembacaan dalam ${win} menit</div>
+                        </div>
+                        <div class="text-end">
+                            <span class="fs-5 fw-bold ${valueClass}">${a.average.toFixed(1)} ${a.unit}</span>
+                            <div class="small text-muted">Batas Maks: ${Number(a.nilai_max).toFixed(1)} ${a.unit}</div>
+                        </div>
+                    </div>`;
+            }).join('');
+        } catch (err) {
+            console.error("Gagal memuat rata-rata 5 menit:", err);
+        }
+    }
+
+    async function fetchAvgHistoryData() {
+        const tbody = document.getElementById('avgHistoryTableBody');
+        if (!tbody) return;
+        try {
+            const params = new URLSearchParams({ page: '1', limit: '100' });
+            const start = document.getElementById('avgStartDate').value;
+            const end = document.getElementById('avgEndDate').value;
+            if (start !== '' && end !== '') {
+                params.set('start_date', start);
+                params.set('end_date', end);
+            }
+            const res = await fetch(`/api/sensor/average/history?${params.toString()}`);
+            if (!res.ok) return;
+            const result = await res.json();
+            const win = result.window_minutes || 5;
+            document.getElementById('historyHeaderTitle').innerText = `Riwayat Rata-rata (Per ${win} Menit)`;
+            const dataList = result.data || [];
+            const types = result.sensor_types || [];
+
+            // Header kolom per tipe sensor
+            const headerEl = document.getElementById('avgHistoryTableHeader');
+            headerEl.innerHTML = `<th class="py-3 ps-3">No</th><th class="py-3">Waktu Bucket</th>` +
+                types.map(t => `<th class="py-3 text-center">${t.nama} <span class="text-secondary fw-normal">(${t.unit})</span></th>`).join('');
+
+            if (dataList.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="${types.length + 2}" class="text-center py-4 text-muted">Belum ada data rata-rata. Tunggu hingga ada pembacaan sensor selama beberapa menit.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = dataList.map((bucket, idx) => {
+                const timeStr = new Date(bucket.bucket_time).toLocaleString('id-ID');
+                const cols = types.map(t => {
+                    const found = (bucket.averages || []).find(a => a.sensor_type_id === t.ID);
+                    return `<td class="text-center"><span class="badge bg-light text-dark border">${found ? `${found.average.toFixed(1)} <span class="text-muted">(${found.total}x)</span>` : '--'}</span></td>`;
+                }).join('');
+                return `<tr><td class="ps-3 text-secondary">${idx + 1}</td><td>${timeStr}</td>${cols}</tr>`;
+            }).join('');
+        } catch (err) {
+            console.error("Gagal memuat riwayat rata-rata:", err);
+        }
+    }
+
+    function resetAvgFilter() {
+        document.getElementById('avgStartDate').value = '';
+        document.getElementById('avgEndDate').value = '';
+        fetchAvgHistoryData();
+    }
+
+    const avgFilterForm = document.getElementById('avgFilterForm');
+    if (avgFilterForm) {
+        avgFilterForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const start = document.getElementById('avgStartDate').value;
+            const end = document.getElementById('avgEndDate').value;
+            if (start === '' || end === '') {
+                alert('Pilih rentang tanggal terlebih dahulu!');
+                return;
+            }
+            if (start > end) {
+                alert('Range tanggal tidak valid! Pastikan "Dari Tanggal" tidak lebih lama dari "Sampai Tanggal".');
+                return;
+            }
+            fetchAvgHistoryData();
+        });
+    }
+
+    // Membaca rentang tanggal dari input filter. Mengembalikan string query
+    // "start_date=...&end_date=..." bila keduanya terisi, atau string kosong.
+    function getDateFilterParams() {
+        const start = document.getElementById('startDate').value;
+        const end = document.getElementById('endDate').value;
+        if (start === '' || end === '') return '';
+        return `start_date=${encodeURIComponent(start)}&end_date=${encodeURIComponent(end)}`;
+    }
+
+    // Validasi rentang tanggal: mulai harus lebih awal/ sama dengan selesai.
+    function isValidDateRange(start, end) {
+        if (start === '' && end === '') return true;
+        if (start === '' || end === '') return false;
+        return start <= end;
+    }
+
+    // Mengosongkan filter tanggal lalu memuat ulang riwayat.
+    function resetFilter() {
+        document.getElementById('startDate').value = '';
+        document.getElementById('endDate').value = '';
+        fetchHistoryData();
+    }
+
+    // Ekspor riwayat ke Excel/PDF sesuai filter tanggal yang dipilih.
+    function exportWithFilter(format) {
+        const start = document.getElementById('startDate').value;
+        const end = document.getElementById('endDate').value;
+
+        if (!isValidDateRange(start, end)) {
+            alert('Range tanggal tidak valid! Pastikan "Dari Tanggal" tidak lebih lama dari "Sampai Tanggal".');
+            return;
+        }
+
+        const endpoint = format === 'pdf' ? '/api/export/pdf' : '/api/export/excel';
+        const filter = getDateFilterParams();
+        window.location.href = filter !== '' ? `${endpoint}?${filter}` : endpoint;
+    }
+
+    // Binding submit form filter riwayat. Direct binding (tanpa DOMContentLoaded)
+    // agar selalu aktif mencegah reload halaman saat mencari data.
+    const filterForm = document.getElementById('filterForm');
+    if (filterForm) {
+        filterForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const start = document.getElementById('startDate').value;
+            const end = document.getElementById('endDate').value;
+            if (!isValidDateRange(start, end)) {
+                alert('Range tanggal tidak valid! Pastikan "Dari Tanggal" tidak lebih lama dari "Sampai Tanggal".');
+                return;
+            }
+            fetchHistoryData();
+        });
+    }
+
+    async function fetchUserProfile() {
+        try {
+            const res = await fetch('/api/profile');
+            if (res.ok) {
+                const user = await res.json();
+                document.getElementById('profileName').innerText = user.nama;
+                document.getElementById('profileUsername').innerText = user.username;
+                document.getElementById('profileRole').innerText = user.role;
+
+                const initial = user.nama.trim().charAt(0).toUpperCase() || 'U';
+                document.getElementById('profileAvatar').innerText = initial;
+
+                const roleBadge = document.getElementById('profileRoleBadge');
+                const isAdmin = user.role === 'admin';
+                roleBadge.innerHTML = `<span class="badge ${isAdmin ? 'bg-primary' : 'bg-secondary'} px-3 py-1 text-uppercase"><i class="bi bi-${isAdmin ? 'person-workspace' : 'person'} me-1"></i>${user.role}</span>`;
+
+                const created = user.created_at ? new Date(user.created_at) : null;
+                if (created && !isNaN(created)) {
+                    const longDate = created.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+                    document.getElementById('profileCreated').innerText = longDate;
+                    document.getElementById('profileJoined').innerText = created.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+                } else {
+                    document.getElementById('profileCreated').innerText = '--';
+                    document.getElementById('profileJoined').innerText = '--';
+                }
+
+                document.getElementById('editName').value = user.nama;
+                document.getElementById('editUsername').value = user.username;
+
+                isAdminUser = user.role === 'admin';
+                if (isAdminUser) {
+                    document.getElementById('menuApproval').classList.remove('d-none');
+                }
+                const avgWrap = document.getElementById('avgSettingWrap');
+                if (avgWrap) avgWrap.classList.toggle('d-none', !isAdminUser);
+            }
+        } catch (err) {
+            console.error("Gagal memuat profil:", err);
+        }
+    }
+
+    document.getElementById('profileForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('profileSubmitBtn');
+        const msg = document.getElementById('profileFormMsg');
+        btn.disabled = true;
+        msg.className = 'small fw-semibold text-muted';
+        msg.innerText = 'Menyimpan...';
+
+        try {
+            const res = await fetch('/api/profile/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    nama: document.getElementById('editName').value,
+                    current_password: document.getElementById('editCurrentPass').value,
+                    new_password: document.getElementById('editNewPass').value
+                })
+            });
+            const result = await res.json();
+            if (res.ok) {
+                msg.className = 'small fw-semibold text-success';
+                msg.innerText = '✓ ' + result.message;
+                await fetchUserProfile();
+                document.getElementById('editCurrentPass').value = '';
+                document.getElementById('editNewPass').value = '';
+            } else {
+                msg.className = 'small fw-semibold text-danger';
+                msg.innerText = result.error || 'Gagal memperbarui profil!';
+            }
+        } catch (err) {
+            msg.className = 'small fw-semibold text-danger';
+            msg.innerText = 'Terjadi kesalahan jaringan.';
+        } finally {
+            btn.disabled = false;
+        }
+    });
+
+    async function fetchNotificationLogs() {
+        try {
+            const res = await fetch('/api/notifications');
+            if (!res.ok) return;
+            const data = await res.json();
+            const tbody = document.getElementById('notifTableBody');
+            const logs = data.logs || [];
+            if (logs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">Belum ada notifikasi.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = logs.map(log => `
+                <tr>
+                    <td class="ps-3 text-muted small">${new Date(log.created_at).toLocaleString()}</td>
+                    <td><span class="badge bg-secondary">${log.tipe}</span></td>
+                    <td class="fw-bold">${Number(log.nilai).toFixed(1)}</td>
+                    <td>${Number(log.batas).toFixed(1)}</td>
+                    <td class="small">${log.pesan}</td>
+                </tr>
+            `).join('');
+        } catch (err) {
+            console.error("Gagal mengambil log notifikasi:", err);
+        }
+    }
+
+    function onSliderChange(val) {
+        document.getElementById('sidebarSliderValue').innerText = `${val} Detik`;
+    }
+
+    async function saveSettings() {
+        const seconds = parseInt(document.getElementById('sidebarIntervalRange').value);
+        const toast = document.getElementById('sidebarToast');
+
+        try {
+            await fetch('/api/setting/interval', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ interval: seconds })
+            });
+
+            if (isAdminUser) {
+                const avgMin = parseInt(document.getElementById('sidebarAvgMinutes').value) || 5;
+                await fetch('/api/setting/average', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ window_minutes: Math.min(120, Math.max(1, avgMin)) })
+                });
+                document.getElementById('sidebarAvgValue').innerText = `${avgMin} Menit`;
+                fetchAverage5();
+            }
+
+            toast.classList.remove('d-none');
+            setTimeout(() => toast.classList.add('d-none'), 2000);
+            currentInterval = seconds;
+            document.getElementById('intervalBadge').innerText = `Auto Refresh (${seconds}s)`;
+            startAutoRefresh(seconds);
+            fetchHistoryData();
+        } catch (err) {
+            console.error("Gagal menyimpan pengaturan:", err);
+        }
+    }
+
+    // Muat pengaturan interval & jendela rata-rata dari server saat halaman dibuka.
+    async function loadSettings() {
+        try {
+            const res = await fetch('/api/setting/interval');
+            if (res.ok) {
+                const data = await res.json();
+                const sec = parseInt(data.interval) || currentInterval;
+                document.getElementById('sidebarIntervalRange').value = sec;
+                document.getElementById('sidebarSliderValue').innerText = `${sec} Detik`;
+                currentInterval = sec;
+                document.getElementById('intervalBadge').innerText = `Auto Refresh (${sec}s)`;
+                startAutoRefresh(sec);
+            }
+        } catch (err) {
+            console.error("Gagal memuat pengaturan interval:", err);
+        }
+
+        if (isAdminUser) {
+            try {
+                const res = await fetch('/api/setting/average');
+                if (res.ok) {
+                    const data = await res.json();
+                    const m = parseInt(data.window_minutes) || 5;
+                    document.getElementById('sidebarAvgMinutes').value = m;
+                    document.getElementById('sidebarAvgValue').innerText = `${m} Menit`;
+                }
+            } catch (err) {
+                console.error("Gagal memuat pengaturan rata-rata:", err);
+            }
+        }
+    }
+
+    function startAutoRefresh(seconds) {
+        if (refreshIntervalId) clearInterval(refreshIntervalId);
+        refreshIntervalId = setInterval(fetchSensorData, seconds * 1000);
+    }
+
+    async function logout() {
+        await fetch('/api/logout', { method: 'POST' });
+        window.location.href = '/';
+    }
+
+    function updateClock() {
+        const now = new Date();
+        document.getElementById('topbarClock').innerText = now.toLocaleString('id-ID', {
+            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+            hour: '2-digit', minute: '2-digit', second: '2-digit'
+        });
+    }
+
+    if (localStorage.getItem('theme') === 'dark') applyTheme('dark');
+
+    // Pulihkan mode & tab terakhir agar tidak kembali ke halaman utama saat reload
+    if (localStorage.getItem('codDummyMode') === '1') {
+        switchDataMode('dummy');
+    }
+    const savedTab = localStorage.getItem('codActiveTab');
+    if (savedTab && savedTab !== 'home') switchTab(savedTab);
+
+    updateClock();
+    setInterval(updateClock, 1000);
+    initChart();
+    fetchUserProfile().finally(loadSettings);
+    fetchSensorData();
+    startAutoRefresh(currentInterval);
+</script>
+</body>
+</html>

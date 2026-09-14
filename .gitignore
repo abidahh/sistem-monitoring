@@ -1,0 +1,17 @@
+# Database SQLite + file lock/backup
+monitoring.db
+monitoring.db-shm
+monitoring.db-wal
+monitoring_backup_*.db
+
+# Binary hasil build
+*.exe
+cod-server
+cod-server-linux-arm64
+
+# Log
+*.log
+
+# Python
+__pycache__/
+*.pyc

@@ -1,0 +1,1557 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Admin - Sistem Monitoring COD</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-main: #f8fafc;
+            --sidebar-bg: #cee2f4;
+            --sidebar-border: #e2e8f0;
+            --sidebar-hover: #e2e8f0;
+            --sidebar-active: #2563eb;
+            --sidebar-text: #334155;
+            --card-border: #e2e8f0;
+            --card-bg: #ffffff;
+            --body-text: #334155;
+            --heading-text: #1e293b;
+            --muted-text: #64748b;
+            --table-head-bg: #f1f5f9;
+            --table-head-text: #334155;
+            --table-bg: #fbfdff;
+            --input-bg: #ffffff;
+            --input-text: #1e293b;
+            --input-border: #dee2e6;
+            --btn-light-bg: #ffffff;
+            --btn-light-text: #334155;
+            --btn-light-border: #dee2e6;
+            --header-bg-light: #ffffff;
+            --theme-btn-color: #ffffff;
+        }
+
+        body.dark {
+            --bg-main: #0f172a;
+            --sidebar-bg: #1e293b;
+            --sidebar-border: #334155;
+            --sidebar-hover: #334155;
+            --sidebar-active: #2563eb;
+            --sidebar-text: #cbd5e1;
+            --card-border: #334155;
+            --card-bg: #1e293b;
+            --body-text: #cbd5e1;
+            --heading-text: #f1f5f9;
+            --muted-text: #94a3b8;
+            --table-head-bg: #273449;
+            --table-head-text: #e2e8f0;
+            --table-bg: #1a2436;
+            --input-bg: #0f172a;
+            --input-text: #e2e8f0;
+            --input-border: #334155;
+            --btn-light-bg: #1e293b;
+            --btn-light-text: #cbd5e1;
+            --btn-light-border: #334155;
+            --header-bg-light: #1e293b;
+        }
+
+        body {
+            min-height: 100vh;
+            background-color: var(--bg-main);
+            color: var(--body-text);
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .sidebar {
+            width: 280px;
+            min-height: 100vh;
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--sidebar-border);
+            transition: margin-left 0.3s ease, transform 0.3s ease;
+            z-index: 1045;
+        }
+
+        .sidebar-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.5);
+            z-index: 1040;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .sidebar-brand { color: #0f172a !important; }
+
+        .nav-link {
+            color: var(--sidebar-text);
+            border-radius: 8px;
+            margin-bottom: 4px;
+            padding: 10px 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .nav-link:hover { color: #0f172a; background-color: var(--sidebar-hover); }
+
+        .nav-link.active {
+            color: #ffffff !important;
+            background-color: var(--sidebar-active);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+        }
+
+        .nav-link.active i { color: #ffffff !important; }
+
+        .content-area { flex: 1; padding: 30px; }
+
+        /* ======= RESPONSIVE & SIDEBAR COLLAPSE ======= */
+        .card-body.p-0 { -webkit-overflow-scrolling: touch; }
+        .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .table-scroll .table { width: max-content; min-width: 100%; }
+
+        @media (max-width: 991.98px) {
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                bottom: 0;
+                min-height: 100vh;
+                overflow-y: auto;
+                transform: translateX(-100%);
+                box-shadow: 0 8px 30px rgba(0, 0, 0, 0.18);
+            }
+            body.sidebar-open .sidebar { transform: translateX(0); }
+            body.sidebar-open .sidebar-backdrop { opacity: 1; visibility: visible; }
+            body { overflow-x: hidden; }
+            .content-area { padding: 20px 16px; }
+            .topbar { padding: 0 12px; }
+        }
+
+        @media (min-width: 992px) {
+            body.sidebar-collapsed .sidebar { margin-left: -282px; }
+        }
+
+        @media (max-width: 575.98px) {
+            .topbar-title { font-size: 0.95rem; }
+            .status-online { display: none !important; }
+        }
+
+        .card-custom {
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+            background-color: var(--card-bg);
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+
+        .badge-soft-warning { background-color: #fef3c7; color: #d97706; font-weight: 600; }
+        .badge-soft-info { background-color: #e0f2fe; color: #0284c7; font-weight: 600; }
+        .badge-soft-success { background-color: #dcfce7; color: #15803d; font-weight: 600; }
+        .badge-soft-danger { background-color: #fee2e2; color: #b91c1c; font-weight: 600; }
+
+        .api-key-cell {
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            background: #f1f5f9;
+            padding: 4px 10px;
+            border-radius: 6px;
+            user-select: all;
+            word-break: break-all;
+            overflow-wrap: anywhere;
+        }
+
+        .topbar {
+            height: 64px;
+            background: linear-gradient(90deg, #627bd4 0%, #0d9488 100%);
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            box-shadow: 0 2px 10px rgba(15, 23, 42, 0.15);
+            position: sticky;
+            top: 0;
+            z-index: 1030;
+        }
+
+        .topbar-title { font-size: 1.05rem; font-weight: 700; letter-spacing: 0.2px; }
+        .topbar-subtitle { font-size: 0.72rem; opacity: 0.85; }
+
+        .topbar-clock {
+            font-size: 0.8rem;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            padding: 6px 14px;
+            font-weight: 600;
+        }
+
+        .status-online { display: inline-flex; align-items: center; gap: 8px; font-size: 0.78rem; font-weight: 700; }
+
+        .status-dot {
+            width: 10px; height: 10px; border-radius: 50%;
+            background-color: #4ade80;
+            animation: pulseDot 1.5s infinite;
+        }
+
+        @keyframes pulseDot {
+            0% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.6); }
+            70% { box-shadow: 0 0 0 8px rgba(74, 222, 128, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
+        }
+
+        /* ================= DARK MODE OVERRIDES ================= */
+        body.dark .sidebar-brand { color: #f1f5f9 !important; }
+
+        body.dark .nav-link:hover { color: #f1f5f9; }
+
+        body.dark .text-slate-700,
+        body.dark .text-slate-800 { color: var(--heading-text) !important; }
+
+        body.dark .text-muted { color: var(--muted-text) !important; }
+
+        body.dark .card-header.bg-white {
+            background-color: var(--header-bg-light) !important;
+        }
+
+        body.dark thead,
+        body.dark .table-light {
+            --bs-table-bg: var(--table-head-bg) !important;
+            --bs-table-color: var(--table-head-text) !important;
+        }
+
+        body.dark .table-light th {
+            font-weight: 700;
+            letter-spacing: 0.4px;
+            border-bottom: 1px solid #3f4c63;
+        }
+
+        .table {
+            --bs-table-bg: var(--table-bg);
+        }
+
+        body.dark .table {
+            --bs-table-bg: var(--table-bg) !important;
+            --bs-table-color: var(--body-text);
+            --bs-table-border-color: #2b3446;
+        }
+
+        body.dark .table > :not(caption) > * > * {
+            background-color: transparent;
+            border-bottom-color: #2b3446;
+        }
+
+        body.dark .table-hover > tbody > tr:hover > * {
+            background-color: #232f44;
+            --bs-table-border-color: #334155;
+        }
+
+        body.dark .table tbody tr:nth-child(even) { background-color: rgba(255, 255, 255, 0.02); }
+
+        body.dark .form-control {
+            background-color: var(--input-bg) !important;
+            color: var(--input-text) !important;
+            border-color: var(--input-border);
+        }
+
+        body.dark .btn-light {
+            background-color: var(--btn-light-bg) !important;
+            color: var(--btn-light-text) !important;
+            border-color: var(--btn-light-border) !important;
+        }
+
+        body.dark .api-key-cell { background-color: #0f172a; color: #7dd3fc; }
+
+        body.dark .modal-content {
+            background-color: #1e293b;
+            color: var(--body-text);
+            border-color: #334155;
+        }
+
+        body.dark .modal-title { color: #f1f5f9; }
+
+        body.dark .modal-content code { color: #7dd3fc; }
+
+        body.dark .bg-warning-subtle { background-color: rgba(245, 158, 11, 0.15) !important; }
+        body.dark .bg-primary-subtle { background-color: rgba(37, 99, 235, 0.15) !important; }
+    </style>
+</head>
+<body>
+
+<header class="topbar">
+    <div class="d-flex align-items-center gap-3">
+        <button type="button" class="d-flex align-items-center justify-content-center btn btn-sm border-0 text-white flex-shrink-0" id="sidebarToggle" title="Buka/Tutup Menu" style="width:36px; height:36px; background: rgba(255,255,255,0.15);">
+            <i class="bi bi-list fs-4"></i>
+        </button>
+        <i class="bi bi-shield-lock-fill fs-3"></i>
+        <div>
+            <div class="topbar-title">Sistem Monitoring COD &amp; Suhu Air</div>
+            <div class="topbar-subtitle d-none d-md-block">Panel Admin</div>
+        </div>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <button type="button" class="btn btn-sm border-0 text-white" id="themeToggle" title="Ganti Mode Terang/Gelap" style="background: rgba(255,255,255,0.15);">
+            <i class="bi bi-moon-stars"></i>
+        </button>
+        <button type="button" class="btn btn-sm border-0 text-white" id="fullscreenToggle" title="Mode Full Layar" style="background: rgba(255,255,255,0.15);">
+            <i class="bi bi-arrows-fullscreen"></i>
+        </button>
+        <span class="status-online"><span class="status-dot"></span> Online</span>
+        <span class="topbar-clock d-none d-md-inline" id="topbarClock">--</span>
+    </div>
+</header>
+
+<div class="d-flex">
+    <div class="sidebar d-flex flex-column p-3">
+        <a href="#" class="d-flex align-items-center mb-4 me-md-auto sidebar-brand text-decoration-none fs-5 fw-bold px-2 pt-2">
+            <i class="bi bi-shield-lock-fill me-2 text-primary"></i> Admin Panel
+        </a>
+        <hr class="mt-0 border-secondary opacity-25">
+        <ul class="nav nav-pills flex-column mb-auto">
+            <li class="nav-item">
+                <a class="nav-link active" id="menuUsers" onclick="switchAdminTab('users')">
+                    <i class="bi bi-people me-2 text-primary"></i> Kelola User
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="menuApiKeys" onclick="switchAdminTab('apikey')">
+                    <i class="bi bi-key me-2 text-secondary"></i> Kelola API Key
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="menuSensorTypes" onclick="switchAdminTab('sensors')">
+                    <i class="bi bi-cpu me-2 text-secondary"></i> Kelola Sensor
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/dashboard">
+                    <i class="bi bi-speedometer2 me-2 text-secondary"></i> Dashboard Utama
+                </a>
+            </li>
+        </ul>
+        <hr class="border-secondary opacity-25">
+        <button class="btn btn-outline-danger w-100 fw-bold text-start px-3 py-2" onclick="logout()">
+            <i class="bi bi-box-arrow-right me-2"></i> Logout
+        </button>
+    </div>
+
+    <div class="sidebar-backdrop" onclick="closeSidebarMobile()"></div>
+
+    <div class="content-area">
+
+        <!-- TAB: KELOLA USER -->
+        <div id="tabUsers">
+            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                <h4 class="fw-bold mb-0 text-slate-800">Kelola Akun Pengguna</h4>
+                <button class="btn btn-primary fw-bold shadow-sm" onclick="showCreateUserModal()">
+                    <i class="bi bi-person-plus me-1"></i> Tambah User
+                </button>
+            </div>
+
+            <div class="alert alert-info border-0 shadow-sm mb-4" style="background-color:#e0f2fe; color:#0369a1;">
+                <i class="bi bi-shield-lock me-1"></i>
+                Akun dibuat langsung oleh Admin dan langsung aktif. Hanya akun yang telah dibuat &amp; divalidasi Admin yang dapat mengakses dashboard monitoring.
+            </div>
+
+            <div class="card card-custom mb-4">
+                <div class="card-body p-4 d-flex align-items-center justify-content-between">
+                    <div>
+                        <h6 class="text-muted fw-bold mb-1 small">TOTAL AKUN</h6>
+                        <h2 class="fw-bold text-primary mb-0" id="totalUserCount">0 Akun</h2>
+                    </div>
+                    <div class="bg-primary-subtle p-3 rounded-circle text-primary">
+                        <i class="bi bi-people fs-2"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card card-custom">
+                <div class="card-header bg-white py-3 border-0">
+                    <h6 class="mb-0 fw-bold text-slate-700">Daftar Semua User</h6>
+                </div>
+                <div class="card-body p-0 table-scroll">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="py-3 ps-3">No</th>
+                                <th class="py-3">Nama Lengkap</th>
+                                <th class="py-3">Username</th>
+                                <th class="py-3">Role</th>
+                                <th class="py-3">Status</th>
+                                <th class="py-3">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="userTableBody">
+                            <tr><td colspan="6" class="text-center py-4 text-muted">Memuat data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: KELOLA API KEY -->
+        <div id="tabApikey" class="d-none">
+            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                <h4 class="fw-bold mb-0 text-slate-800">Kelola API Key Sensor</h4>
+                <button class="btn btn-primary fw-bold shadow-sm" onclick="showCreateApiKeyModal()">
+                    <i class="bi bi-plus-lg me-1"></i> Buat API Key Baru
+                </button>
+            </div>
+
+            <div class="alert alert-info border-0 shadow-sm mb-4" style="background-color:#e0f2fe; color:#0369a1;">
+                <i class="bi bi-info-circle me-1"></i>
+                API Key digunakan oleh Raspberry Pi / skrip Python untuk mengirim data sensor ke server.
+                Kirimkan key ini melalui header <code>X-API-Key</code> pada request <code>POST /api/sensor</code>.
+            </div>
+
+            <div class="card card-custom mb-4">
+                <div class="card-body p-4 d-flex align-items-center justify-content-between">
+                    <div>
+                        <h6 class="text-muted fw-bold mb-1 small">TOTAL API KEY AKTIF</h6>
+                        <h2 class="fw-bold text-primary mb-0" id="activeKeyCount">0 Key</h2>
+                    </div>
+                    <div class="bg-primary-subtle p-3 rounded-circle text-primary">
+                        <i class="bi bi-key fs-2"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card card-custom">
+                <div class="card-header bg-white py-3 border-0">
+                    <h6 class="mb-0 fw-bold text-slate-700">Daftar API Key</h6>
+                </div>
+                <div class="card-body p-0 table-scroll">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="py-3 ps-3">No</th>
+                                <th class="py-3">Nama</th>
+                                <th class="py-3">API Key</th>
+                                <th class="py-3">Status</th>
+                                <th class="py-3">Dibuat</th>
+                                <th class="py-3 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="apiKeyTableBody">
+                            <tr><td colspan="6" class="text-center py-4 text-muted">Memuat data API key...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: KELOLA SENSOR -->
+        <div id="tabSensors" class="d-none">
+            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                <h4 class="fw-bold mb-0 text-slate-800">Kelola Tipe Sensor</h4>
+                <button class="btn btn-primary fw-bold shadow-sm" onclick="showCreateSensorTypeModal()">
+                    <i class="bi bi-cpu me-1"></i> Tambah Sensor
+                </button>
+            </div>
+
+            <div class="alert alert-info border-0 shadow-sm mb-4" style="background-color:#e0f2fe; color:#0369a1;">
+                <i class="bi bi-info-circle me-1"></i>
+                Tipe sensor menentukan parameter yang dipantau (mis. Suhu Air, COD, Suhu Ruang).
+                Untuk sensor bersumber <strong>Real</strong>, konfigurasi Modbus diatur lewat tombol
+                <strong>"Tambah Sensor"</strong> — pilih <strong>Input Manual</strong> atau <strong>Auto Detect</strong> di dalam form.
+                Sensor simulasi dibangkitkan otomatis dan dapat dipilih untuk tampilan dashboard tiap user.
+            </div>
+
+            <div class="card card-custom mb-4">
+                <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <h6 class="mb-0 fw-bold text-slate-700"><i class="bi bi-graph-up-arrow me-2 text-primary"></i>Deteksi Lonjakan Data</h6>
+                    <div class="form-check form-switch d-flex align-items-center mb-0">
+                        <input class="form-check-input me-1" type="checkbox" id="spikeEnabled" checked>
+                        <label class="form-check-label small text-muted" for="spikeEnabled">Aktif</label>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small text-muted">RASIO LONJAKAN (contoh 0.5 = 50%)</label>
+                            <input type="number" step="0.1" min="0.1" id="spikeJumpRatio" class="form-control" placeholder="0.5">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small text-muted">SELISIH MINIMUM (ABS)</label>
+                            <input type="number" step="0.1" min="0" id="spikeAbsMin" class="form-control" placeholder="5">
+                        </div>
+                        <div class="col-md-4">
+                            <button class="btn btn-primary fw-bold w-100" onclick="saveSpikeSettings()">
+                                <i class="bi bi-check2 me-1"></i> Simpan Pengaturan
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-text small mt-2">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Nilai dianggap lonjakan jika selisih dari bacaan sebelumnya melebihi
+                        <strong>max(abs_min, bacaan_sebelumnya × rasio)</strong>. Data lonjakan tetap
+                        tersimpan di riwayat, namun tidak dihitung ke rata-rata.
+                        Contoh: normal 100 mg/L → lonjakan ke 5 atau 900 otomatis dicoret dari rata-rata.
+                    </div>
+                    <div id="spikeToast" class="text-success small fw-semibold mt-2 d-none">✓ Pengaturan tersimpan</div>
+                </div>
+            </div>
+
+            <div class="card card-custom">
+                <div class="card-header bg-white py-3 border-0">
+                    <h6 class="mb-0 fw-bold text-slate-700">Daftar Tipe Sensor</h6>
+                </div>
+                
+                <div class="card-body p-0 table-scroll">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="py-3 ps-3">No</th>
+                                <th class="py-3">Nama</th>
+                                <th class="py-3">Unit</th>
+                                <th class="py-3">Batas Max</th>
+                                <th class="py-3">Sumber</th>
+                                <th class="py-3">Status</th>
+                                <th class="py-3 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sensorTypeTableBody">
+                            <tr><td colspan="7" class="text-center py-4 text-muted">Memuat data sensor...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- MODAL: TAMBAH USER BARU -->
+<div class="modal fade" id="createUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius: 14px;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">Tambah User Baru</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="createUserAlert" class="alert d-none small fw-semibold" role="alert"></div>
+
+                <label class="form-label fw-bold small text-muted">NAMA LENGKAP</label>
+                <input type="text" id="newUserName" class="form-control mb-3" placeholder="Nama lengkap user">
+
+                <label class="form-label fw-bold small text-muted">USERNAME</label>
+                <input type="text" id="newUserUsername" class="form-control mb-3" placeholder="Username untuk login">
+
+                <label class="form-label fw-bold small text-muted">PASSWORD</label>
+                <input type="password" id="newUserPassword" class="form-control mb-3" placeholder="Minimal 6 karakter">
+
+                <label class="form-label fw-bold small text-muted">ROLE</label>
+                <select id="newUserRole" class="form-select">
+                    <option value="operator">Operator</option>
+                    <option value="admin">Admin</option>
+                </select>
+
+                <div class="alert alert-success border-0 small py-2 px-3 mt-3 mb-0" style="background-color:#dcfce7; color:#15803d;">
+                    <i class="bi bi-check-circle me-1"></i> Akun langsung aktif dan dapat login.
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-primary fw-bold" onclick="createUser()">
+                    <i class="bi bi-check-lg me-1"></i> Simpan
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: BUAT API KEY BARU -->
+<div class="modal fade" id="createKeyModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius: 14px;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">Buat API Key Baru</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label fw-bold small text-muted">NAMA KEY</label>
+                <input type="text" id="newKeyName" class="form-control" placeholder="Contoh: Raspberry Pi #1" required>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-primary fw-bold" onclick="createApiKey()">
+                    <i class="bi bi-plus-lg me-1"></i> Buat Key
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: KEY BARU DIBUAT -->
+<div class="modal fade" id="showKeyModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius: 14px;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-success"><i class="bi bi-check-circle me-1"></i> API Key Berhasil Dibuat</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning border-0 small" style="background-color:#fef3c7; color:#92400e;">
+                    <i class="bi bi-exclamation-triangle me-1"></i> Simpan key ini sekarang! Key hanya ditampilkan sekali ini saja.
+                </div>
+                <label class="form-label fw-bold small text-muted">NAMA KEY</label>
+                <div class="mb-3 fw-bold" id="createdKeyName">--</div>
+                <label class="form-label fw-bold small text-muted">API KEY</label>
+                <div class="p-3 bg-light border rounded text-center">
+                    <code class="fs-5 fw-bold text-primary" id="createdKeyValue">--</code>
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-success fw-bold" data-bs-dismiss="modal">Saya sudah menyimpan</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: ATUR SENSOR USER -->
+<div class="modal fade" id="setSensorsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius: 14px;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">Atur Sensor User</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="small text-muted mb-3">Pilih tipe sensor yang akan <strong>ditampilkan di dashboard</strong> untuk user: <span class="fw-bold text-slate-800" id="setSensorsUserName">--</span></div>
+                <div id="setSensorsAlert" class="alert d-none small fw-semibold" role="alert"></div>
+                <div id="setSensorsChecklist" class="d-flex flex-column gap-2">
+                    <div class="text-muted small">Memuat daftar sensor...</div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-primary fw-bold" onclick="saveUserSensors()">
+                    <i class="bi bi-check-lg me-1"></i> Simpan
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: TAMBAH/EDIT TIPE SENSOR -->
+<div class="modal fade" id="sensorTypeModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" style="border-radius: 14px;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold" id="sensorTypeModalTitle">Tambah Tipe Sensor</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="sensorTypeAlert" class="alert d-none small fw-semibold" role="alert"></div>
+
+                <label class="form-label fw-bold small text-muted">NAMA SENSOR</label>
+                <input type="text" id="sensorNama" class="form-control mb-3" placeholder="Contoh: Suhu Ruang">
+
+                <div class="row g-3 mb-1">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small text-muted">UNIT</label>
+                        <select id="sensorUnit" class="form-select" onchange="toggleCustomUnit()">
+                            <option value="">-- Pilih Unit --</option>
+                            <option value="°C">°C (Derajat Celcius)</option>
+                            <option value="°F">°F (Derajat Fahrenheit)</option>
+                            <option value="pH">pH (Keasaman)</option>
+                            <option value="mg/L">mg/L (Miligram per Liter)</option>
+                            <option value="ml/L">ml/L (Mililiter per Liter)</option>
+                            <option value="ppm">ppm (Parts Per Million)</option>
+                            <option value="NTU">NTU (Turbidity)</option>
+                            <option value="µS/cm">µS/cm (Konduktivitas)</option>
+                            <option value="mS/cm">mS/cm (Konduktivitas Tinggi)</option>
+                            <option value="mg/L O₂">mg/L O₂ (Dissolved Oxygen)</option>
+                            <option value="mm">mm (Kedalaman/Curah Hujan)</option>
+                            <option value="m/s">m/s (Kecepatan Aliran)</option>
+                            <option value="L/L">L/L (Rasio Volume)</option>
+                            <option value="custom">✏️ Lainnya (ketik manual)...</option>
+                        </select>
+                        <input type="text" id="sensorUnitCustom" class="form-control d-none mt-2" placeholder="Ketik unit custom...">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small text-muted">BATAS MAKSIMAL (AMBANG BATAS)</label>
+                        <input type="number" step="0.1" id="sensorNilaiMax" class="form-control" placeholder="Contoh: 30">
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-1 mt-0">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small text-muted">WARNA GRAFIK</label>
+                        <input type="color" id="sensorWarna" class="form-control form-control-color w-100" value="#0d9488">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small text-muted">STATUS &amp; SUMBER DATA</label>
+                        <div class="d-flex gap-2">
+                            <select id="sensorSumber" class="form-select" onchange="syncModbusVisibility()">
+                                <option value="simulasi">Simulasi</option>
+                                <option value="real">Real (Modbus)</option>
+                            </select>
+                            <div class="form-check form-switch d-flex align-items-center mb-0 px-2" title="Aktif/Nonaktif">
+                                <input class="form-check-input" type="checkbox" id="sensorAktif" checked>
+                                <label class="form-check-label ms-2 small text-muted" for="sensorAktif">Aktif</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="my-4">
+                <div id="modbusConfigWrap">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <h6 class="fw-bold text-slate-700 mb-0"><i class="bi bi-plug me-2 text-primary"></i>Konfigurasi Modbus (untuk sumber Real)</h6>
+                        <div class="btn-group btn-group-sm" role="group" aria-label="Metode konfigurasi Modbus">
+                            <input type="radio" class="btn-check" name="modbusMethod" id="modbusMethodManual" checked onchange="setModbusMethod('manual')">
+                            <label class="btn btn-outline-primary fw-bold" for="modbusMethodManual">Input Manual</label>
+                            <input type="radio" class="btn-check" name="modbusMethod" id="modbusMethodAuto" onchange="setModbusMethod('auto')">
+                            <label class="btn btn-outline-primary fw-bold" for="modbusMethodAuto"><i class="bi bi-radar me-1"></i>Auto Detect</label>
+                        </div>
+                    </div>
+
+                    <!-- MODE MANUAL -->
+                    <div id="modbusManualFields">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold small text-muted">PORT / COM</label>
+                                <input type="text" id="sensorPortCom" class="form-control" placeholder="COM3">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold small text-muted">UID / SLAVE ID</label>
+                                <input type="number" min="1" max="247" id="sensorSlaveID" class="form-control" placeholder="1">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold small text-muted">ADDRESS REGISTER</label>
+                                <input type="number" min="0" id="sensorRegisterAddr" class="form-control" placeholder="0">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold small text-muted">BAUD RATE</label>
+                                <select id="sensorBaudRate" class="form-select">
+                                    <option value="9600">9600</option>
+                                    <option value="19200">19200</option>
+                                    <option value="38400">38400</option>
+                                    <option value="57600">57600</option>
+                                    <option value="115200">115200</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold small text-muted">FORMAT DATA</label>
+                                <select id="sensorRegisterFormat" class="form-select">
+                                    <option value="float.be">Float 32-bit: ABCD (Big Endian)</option>
+                                    <option value="float.cdab">Float 32-bit: CDAB (tukar word)</option>
+                                    <option value="float.badc">Float 32-bit: BADC (tukar byte)</option>
+                                    <option value="float.dcba">Float 32-bit: DCBA (Little Endian)</option>
+                                    <option value="int32.be">Integer 32-bit: Big Endian</option>
+                                    <option value="int32.le">Integer 32-bit: Little Endian</option>
+                                    <option value="int16.be">Integer 16-bit: Big Endian</option>
+                                    <option value="int16.le">Integer 16-bit: Little Endian</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- MODE AUTO DETECT -->
+                    <div id="modbusAutoFields" class="d-none">
+                        <div class="alert alert-info border-0 small py-2 px-3" style="background-color:#e0f2fe; color:#0369a1;">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Nyalakan sensor dan pastikan adaptor USB-RS485 terhubung, lalu tekan tombol di
+                            bawah. Jika ditemukan lebih dari satu kandidat, pilih salah satu.
+                        </div>
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <button type="button" class="btn btn-primary btn-sm fw-bold" id="modalBtnScan" onclick="startModalSensorScan()">
+                                <i class="bi bi-search me-1"></i> Mulai Scan Otomatis
+                            </button>
+                            <span id="modalScanStatus" class="small text-muted"></span>
+                        </div>
+                        <div class="progress d-none mb-2" id="modalScanProgressWrap" style="height:8px;">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" id="modalScanProgress" style="width:0%"></div>
+                        </div>
+                        <div id="modalScanResult"></div>
+                    </div>
+
+                    <div class="form-text small mt-2">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Pengaturan ini dipakai untuk membaca sensor RS485/Modbus secara otomatis. Cukup untuk sensor yang sumbernya <strong>Real</strong>.
+                    </div>
+                </div>
+
+                <input type="hidden" id="sensorTypeID">
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-primary fw-bold" onclick="saveSensorType()">
+                    <i class="bi bi-check-lg me-1"></i> Simpan
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    function switchAdminTab(tab) {
+        document.getElementById('tabUsers').classList.add('d-none');
+        document.getElementById('tabApikey').classList.add('d-none');
+        document.getElementById('tabSensors').classList.add('d-none');
+        document.getElementById('menuUsers').classList.remove('active');
+        document.getElementById('menuApiKeys').classList.remove('active');
+        document.getElementById('menuSensorTypes').classList.remove('active');
+
+        if (tab === 'users') {
+            document.getElementById('tabUsers').classList.remove('d-none');
+            document.getElementById('menuUsers').classList.add('active');
+            fetchUsers();
+        } else if (tab === 'sensors') {
+            document.getElementById('tabSensors').classList.remove('d-none');
+            document.getElementById('menuSensorTypes').classList.add('active');
+            fetchSensorTypes();
+            loadSpikeSettings();
+        } else {
+            document.getElementById('tabApikey').classList.remove('d-none');
+            document.getElementById('menuApiKeys').classList.add('active');
+            fetchApiKeys();
+        }
+    }
+
+    // --- KELOLA USER ---
+    async function fetchUsers() {
+        try {
+            const res = await fetch('/api/admin/users');
+            if (!res.ok) {
+                if (res.status === 403) { window.location.href = '/dashboard'; }
+                return;
+            }
+            const data = await res.json();
+            const users = data.users || [];
+            document.getElementById('totalUserCount').innerText = `${users.length} Akun`;
+            renderUserTable(users);
+        } catch (err) {
+            console.error("Gagal mengambil data user:", err);
+        }
+    }
+
+    function renderUserTable(users) {
+        const tbody = document.getElementById('userTableBody');
+        if (users.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted"><i class="bi bi-people fs-4 d-block mb-1"></i>Belum ada user.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = users.map((u, i) => {
+            const roleBadge = u.role === 'admin'
+                ? '<span class="badge badge-soft-info">Admin</span>'
+                : '<span class="badge" style="background-color:#0d9488; color:#fff;">Operator</span>';
+            const statusBadge = u.is_approved
+                ? '<span class="badge badge-soft-success">Aktif</span>'
+                : '<span class="badge badge-soft-danger">Nonaktif</span>';
+            const toggleLabel = u.is_approved ? 'Nonaktifkan' : 'Aktifkan';
+            const toggleIcon = u.is_approved ? 'bi-pause-circle' : 'bi-play-circle';
+            const toggleClass = u.is_approved ? 'btn-warning' : 'btn-success';
+            return `
+                <tr>
+                    <td class="ps-3 text-secondary">${i + 1}</td>
+                    <td class="fw-bold text-slate-700">${u.nama}</td>
+                    <td><code class="text-primary fs-6">${u.username}</code></td>
+                    <td>${roleBadge}</td>
+                    <td>${statusBadge}</td>
+                    <td>
+                        <button class="btn btn-light btn-sm fw-bold px-2 me-1 border shadow-sm" onclick="showSetSensorsModal(${u.ID}, '${u.nama}')" title="Atur sensor yang ditampilkan">
+                            <i class="bi bi-cpu me-1"></i> Sensor
+                        </button>
+                        <button class="btn ${toggleClass} btn-sm fw-bold px-2 me-1 shadow-sm" onclick="toggleUser(${u.ID})" title="${toggleLabel}">
+                            <i class="bi ${toggleIcon}"></i>
+                        </button>
+                        <button class="btn btn-danger btn-sm fw-bold px-2 shadow-sm" onclick="deleteUser(${u.ID})" title="Hapus">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function showCreateUserModal() {
+        document.getElementById('newUserName').value = '';
+        document.getElementById('newUserUsername').value = '';
+        document.getElementById('newUserPassword').value = '';
+        document.getElementById('newUserRole').value = 'operator';
+        hideCreateUserAlert();
+        new bootstrap.Modal(document.getElementById('createUserModal')).show();
+    }
+
+    function showCreateUserAlert(msg, type) {
+        const el = document.getElementById('createUserAlert');
+        el.className = `alert alert-${type} small fw-semibold`;
+        el.innerText = msg;
+        el.classList.remove('d-none');
+    }
+
+    function hideCreateUserAlert() {
+        document.getElementById('createUserAlert').classList.add('d-none');
+    }
+
+    async function createUser() {
+        const nama = document.getElementById('newUserName').value.trim();
+        const username = document.getElementById('newUserUsername').value.trim();
+        const password = document.getElementById('newUserPassword').value;
+        const role = document.getElementById('newUserRole').value;
+
+        if (!nama || !username || !password) { showCreateUserAlert('Semua field harus diisi!', 'danger'); return; }
+        if (password.length < 6) { showCreateUserAlert('Password minimal 6 karakter!', 'danger'); return; }
+
+        try {
+            const res = await fetch('/api/admin/users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nama, username, password, role })
+            });
+            const result = await res.json();
+            if (res.ok) {
+                bootstrap.Modal.getInstance(document.getElementById('createUserModal')).hide();
+                fetchUsers();
+            } else {
+                showCreateUserAlert(result.error || 'Gagal membuat user.', 'danger');
+            }
+        } catch (err) {
+            showCreateUserAlert('Tidak dapat terhubung ke server.', 'danger');
+        }
+    }
+
+    async function toggleUser(id) {
+        if (!confirm("Ubah status akun ini? (Aktif/Nonaktif)")) return;
+        try {
+            const res = await fetch(`/api/admin/users/${id}/toggle`, { method: 'POST' });
+            const result = await res.json();
+            if (res.ok) {
+                fetchUsers();
+            } else {
+                alert(result.error || 'Gagal mengubah status akun.');
+            }
+        } catch (err) {
+            console.error("Gagal toggle user:", err);
+        }
+    }
+
+    async function deleteUser(id) {
+        if (!confirm("Yakin ingin menghapus akun ini?")) return;
+        try {
+            const res = await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
+            const result = await res.json();
+            if (res.ok) {
+                fetchUsers();
+            } else {
+                alert(result.error || 'Gagal menghapus akun.');
+            }
+        } catch (err) {
+            console.error("Gagal menghapus user:", err);
+        }
+    }
+
+    // --- KELOLA TIPE SENSOR ---
+    async function fetchSensorTypes() {
+        try {
+            const res = await fetch('/api/admin/sensor-types');
+            if (!res.ok) return;
+            const data = await res.json();
+            renderSensorTypeTable(data.sensor_types || []);
+        } catch (err) {
+            console.error("Gagal mengambil tipe sensor:", err);
+        }
+    }
+
+    // --- DETEKSI LONJAKAN ---
+    async function loadSpikeSettings() {
+        try {
+            const res = await fetch('/api/setting/spike');
+            if (!res.ok) return;
+            const data = await res.json();
+            document.getElementById('spikeEnabled').checked = !!data.enabled;
+            document.getElementById('spikeJumpRatio').value = data.jump_ratio ?? 0.5;
+            document.getElementById('spikeAbsMin').value = data.abs_min ?? 5;
+        } catch (err) {
+            console.error("Gagal memuat pengaturan lonjakan:", err);
+        }
+    }
+
+    async function saveSpikeSettings() {
+        const ratio = parseFloat(document.getElementById('spikeJumpRatio').value) || 0.5;
+        const absMin = parseFloat(document.getElementById('spikeAbsMin').value) || 5;
+        try {
+            const res = await fetch('/api/setting/spike', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    enabled: document.getElementById('spikeEnabled').checked,
+                    jump_ratio: ratio,
+                    abs_min: absMin
+                })
+            });
+            const toast = document.getElementById('spikeToast');
+            toast.classList.remove('d-none');
+            setTimeout(() => toast.classList.add('d-none'), 2000);
+        } catch (err) {
+            console.error("Gagal menyimpan pengaturan lonjakan:", err);
+        }
+    }
+
+    function renderSensorTypeTable(types) {
+        const tbody = document.getElementById('sensorTypeTableBody');
+        if (types.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted"><i class="bi bi-cpu fs-4 d-block mb-1"></i>Belum ada tipe sensor.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = types.map((st, i) => {
+            const statusBadge = st.aktif
+                ? '<span class="badge badge-soft-success">Aktif</span>'
+                : '<span class="badge badge-soft-danger">Nonaktif</span>';
+            const sumberReal = (st.sumber === 'real');
+            const sumberBadge = sumberReal
+                ? '<span class="badge bg-primary-subtle text-primary border">Real-time</span>'
+                : '<span class="badge badge-soft-warning">Simulasi</span>';
+            const colorDot = `<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${st.warna};margin-right:6px;"></span>`;
+            return `
+                <tr>
+                    <td class="ps-3 text-secondary">${i + 1}</td>
+                    <td class="fw-bold text-slate-700">${colorDot}${st.nama}</td>
+                    <td><code class="text-primary">${st.unit}</code></td>
+                    <td class="fw-semibold">${st.nilai_max > 0 ? st.nilai_max : '-'}</td>
+                    <td>${sumberBadge}</td>
+                    <td>${statusBadge}</td>
+                    <td class="text-center">
+                        <button class="btn btn-light btn-sm fw-bold px-2 me-1 border shadow-sm" onclick="openEditSensorTypeModal(${st.ID})" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-danger btn-sm fw-bold px-2 shadow-sm" onclick="deleteSensorType(${st.ID})" title="Hapus">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+function toggleCustomUnit() {
+    const sel = document.getElementById('sensorUnit');
+    const custom = document.getElementById('sensorUnitCustom');
+    if (sel.value === 'custom') {
+        custom.classList.remove('d-none');
+        custom.focus();
+    } else {
+        custom.classList.add('d-none');
+        custom.value = '';
+    }
+}
+function getUnitValue() {
+    const sel = document.getElementById('sensorUnit').value;
+    if (sel === 'custom') return document.getElementById('sensorUnitCustom').value.trim();
+    return sel;
+}
+function setUnitValue(val) {
+    const sel = document.getElementById('sensorUnit');
+    const custom = document.getElementById('sensorUnitCustom');
+    const options = Array.from(sel.options).map(o => o.value);
+    if (options.includes(val)) {
+        sel.value = val;
+        custom.classList.add('d-none');
+        custom.value = '';
+    } else {
+        sel.value = 'custom';
+        custom.classList.remove('d-none');
+        custom.value = val;
+    }
+}
+// A. Reset form saat tombol "Tambah Sensor" diklik
+function showCreateSensorTypeModal() {
+    document.getElementById('sensorTypeID').value = '';
+    document.getElementById('sensorNama').value = '';
+    document.getElementById('sensorUnit').value = '';
+    document.getElementById('sensorUnitCustom').value = '';
+    document.getElementById('sensorUnitCustom').classList.add('d-none');
+    document.getElementById('sensorNilaiMax').value = '';
+    document.getElementById('sensorWarna').value = '#0d9488';
+    document.getElementById('sensorSumber').value = 'simulasi';
+    document.getElementById('sensorAktif').checked = true;
+    document.getElementById('sensorPortCom').value = 'COM3';
+    document.getElementById('sensorSlaveID').value = '1';
+    document.getElementById('sensorRegisterAddr').value = '0';
+    document.getElementById('sensorBaudRate').value = '9600';
+    document.getElementById('sensorRegisterFormat').value = 'float.be';
+    document.getElementById('modbusMethodManual').checked = true;
+    setModbusMethod('manual');
+    syncModbusVisibility();
+
+    document.getElementById('sensorTypeModalTitle').innerText = 'Tambah Tipe Sensor';
+    hideSensorTypeAlert();
+    new bootstrap.Modal(document.getElementById('sensorTypeModal')).show();
+}
+
+// B. Load data ke form saat tombol Edit diklik (dipanggil dari tabel)
+function openEditSensorTypeModal(id) {
+    fetch('/api/admin/sensor-types')
+        .then(res => res.json())
+        .then(data => {
+            const item = (data.sensor_types || []).find(s => s.ID === id);
+            if (item) {
+                document.getElementById('sensorTypeID').value = item.ID;
+                document.getElementById('sensorNama').value = item.nama;
+                setUnitValue(item.unit);
+                document.getElementById('sensorNilaiMax').value = item.nilai_max;
+                document.getElementById('sensorWarna').value = item.warna || '#0d9488';
+                document.getElementById('sensorSumber').value = item.sumber || 'simulasi';
+                document.getElementById('sensorAktif').checked = item.aktif;
+
+                // Set data Modbus saat edit
+                document.getElementById('sensorPortCom').value = item.port_com || 'COM3';
+                document.getElementById('sensorSlaveID').value = item.slave_id || 1;
+                document.getElementById('sensorRegisterAddr').value = item.register_addr || 0;
+                document.getElementById('sensorBaudRate').value = item.baud_rate || 9600;
+                document.getElementById('sensorRegisterFormat').value = item.register_format || 'float.be';
+                document.getElementById('modbusMethodManual').checked = true;
+                setModbusMethod('manual');
+                syncModbusVisibility();
+
+                document.getElementById('sensorTypeModalTitle').innerText = 'Edit Tipe Sensor';
+                hideSensorTypeAlert();
+                new bootstrap.Modal(document.getElementById('sensorTypeModal')).show();
+            }
+        })
+        .catch(() => showSensorTypeAlert('Gagal memuat data sensor.', 'danger'));
+}
+
+function hideSensorTypeAlert() {
+    const el = document.getElementById('sensorTypeAlert');
+    el.classList.add('d-none');
+}
+
+function showSensorTypeAlert(msg, type) {
+    const el = document.getElementById('sensorTypeAlert');
+    el.className = `alert alert-${type} small fw-semibold`;
+    el.innerText = msg;
+    el.classList.remove('d-none');
+}
+
+// --- METODE KONFIGURASI MODBUS (MANUAL / AUTO DETECT) ---
+function setModbusMethod(mode) {
+    document.getElementById('modbusAutoFields').classList.toggle('d-none', mode !== 'auto');
+}
+
+function syncModbusVisibility() {
+    const sumber = document.getElementById('sensorSumber').value;
+    document.getElementById('modbusConfigWrap').classList.toggle('d-none', sumber !== 'real');
+}
+
+// --- SCAN OTOMATIS MODBUS (di dalam modal) ---
+let modalScanPollTimer = null;
+
+function startModalSensorScan() {
+    const statusEl = document.getElementById('modalScanStatus');
+    const btn = document.getElementById('modalBtnScan');
+    document.getElementById('modalScanProgressWrap').classList.remove('d-none');
+    document.getElementById('modalScanProgress').style.width = '0%';
+    document.getElementById('modalScanResult').innerHTML = '';
+    statusEl.textContent = 'Mengirim perintah scan...';
+    btn.disabled = true;
+
+    fetch('/api/admin/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ baud_rates: [9600, 19200, 38400] })
+    })
+        .then(async res => {
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                statusEl.textContent = data.error || 'Gagal memulai scan.';
+                btn.disabled = false;
+                return;
+            }
+            pollModalScan(data.scan_id);
+        })
+        .catch(() => {
+            statusEl.textContent = 'Tidak dapat terhubung ke server.';
+            btn.disabled = false;
+        });
+}
+
+function pollModalScan(id) {
+    if (modalScanPollTimer) clearInterval(modalScanPollTimer);
+    modalScanPollTimer = setInterval(async () => {
+        try {
+            const res = await fetch('/api/admin/scan/' + id);
+            if (!res.ok) { stopModalScanPoll(); return; }
+            const j = await res.json();
+            const statusEl = document.getElementById('modalScanStatus');
+            document.getElementById('modalScanProgress').style.width = (j.progress || 0) + '%';
+            statusEl.textContent = j.message || 'Memindai...';
+            if (j.status === 'done') {
+                stopModalScanPoll();
+                document.getElementById('modalBtnScan').disabled = false;
+                statusEl.textContent = j.message || 'Scan selesai.';
+                renderModalScanResults(j.results || []);
+            } else if (j.status === 'error') {
+                stopModalScanPoll();
+                document.getElementById('modalBtnScan').disabled = false;
+                statusEl.textContent = 'Error: ' + (j.error || j.message);
+            }
+        } catch (e) {
+            stopModalScanPoll();
+            document.getElementById('modalBtnScan').disabled = false;
+        }
+    }, 900);
+}
+
+function stopModalScanPoll() {
+    if (modalScanPollTimer) { clearInterval(modalScanPollTimer); modalScanPollTimer = null; }
+}
+
+function renderModalScanResults(results) {
+    const wrap = document.getElementById('modalScanResult');
+    if (!results.length) {
+        wrap.innerHTML = '<div class="alert alert-warning small fw-semibold mb-0">Scan selesai: tidak ada kandidat ditemukan. Periksa adaptor USB-RS485 dan sumber daya sensor.</div>';
+        return;
+    }
+    const rows = results.map((c, i) => `
+        <div class="form-check border rounded p-2 px-3 mb-2 shadow-sm" style="cursor:pointer;">
+            <input class="form-check-input me-2" type="radio" name="modalScanCandidate" value="${i}" id="msc_${i}" onchange="applyModalCandidate(${i})" ${i === 0 ? 'checked' : ''}>
+            <label class="form-check-label w-100" for="msc_${i}">
+                <span class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <span>
+                        <span class="badge bg-primary-subtle text-primary border">${c.port}</span>
+                        <span class="badge bg-secondary-subtle text-secondary border">UID ${c.slave_id}</span>
+                        <span class="small text-secondary">Reg ${c.register} (0x${(c.register).toString(16).toUpperCase().padStart(4, '0')})</span>
+                    </span>
+                    <span class="small">
+                        <code class="text-primary">${c.format}</code>
+                        <span class="fw-semibold ms-2">${Number(c.value_preview).toPrecision(5)}</span>
+                    </span>
+                </span>
+            </label>
+        </div>`).join('');
+    wrap.innerHTML = `
+        <div class="small text-muted mb-2"><i class="bi bi-hand-index-thumb me-1"></i>${results.length} kandidat ditemukan. Pilih salah satu untuk mengisi konfigurasi.</div>
+        ${rows}`;
+    window.__modalScanCandidates = results;
+    applyModalCandidate(0);
+}
+
+function applyModalCandidate(idx) {
+    const c = (window.__modalScanCandidates || [])[idx];
+    if (!c) return;
+    document.getElementById('sensorPortCom').value = c.port;
+    document.getElementById('sensorSlaveID').value = c.slave_id;
+    document.getElementById('sensorRegisterAddr').value = c.register;
+    document.getElementById('sensorBaudRate').value = '9600';
+    document.getElementById('sensorRegisterFormat').value = c.format;
+}
+
+// C. Simpan data (Create / Update)
+function saveSensorType() {
+    const id = document.getElementById('sensorTypeID').value;
+    const payload = {
+        nama: document.getElementById('sensorNama').value.trim(),
+        unit: getUnitValue(),
+        nilai_max: parseFloat(document.getElementById('sensorNilaiMax').value) || 0,
+        warna: document.getElementById('sensorWarna').value,
+        sumber: document.getElementById('sensorSumber').value,
+        aktif: document.getElementById('sensorAktif').checked,
+
+        // Payload Modbus
+        port_com: document.getElementById('sensorPortCom').value.trim() || 'COM3',
+        slave_id: parseInt(document.getElementById('sensorSlaveID').value) || 1,
+        register_addr: parseInt(document.getElementById('sensorRegisterAddr').value) || 0,
+        baud_rate: parseInt(document.getElementById('sensorBaudRate').value) || 9600,
+        register_format: document.getElementById('sensorRegisterFormat').value || 'float.be'
+    };
+
+    if (!payload.nama || !payload.unit) {
+        showSensorTypeAlert('Nama sensor dan unit wajib diisi!', 'danger');
+        return;
+    }
+
+    const url = id ? `/api/admin/sensor-types/${id}` : '/api/admin/sensor-types';
+    const method = id ? 'PUT' : 'POST';
+
+    fetch(url, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(result => {
+        if (result.error) {
+            showSensorTypeAlert(result.error, 'danger');
+        } else {
+            fetchSensorTypes();
+            bootstrap.Modal.getInstance(document.getElementById('sensorTypeModal')).hide();
+        }
+    })
+    .catch(() => showSensorTypeAlert('Tidak dapat terhubung ke server.', 'danger'));
+}
+
+// D. Hapus Tipe Sensor (Delete)
+function deleteSensorType(id) {
+    if (confirm('Yakin ingin menghapus tipe sensor ini beserta konfigurasi Modbus-nya?')) {
+        fetch(`/api/admin/sensor-types/${id}`, { method: 'DELETE' })
+            .then(res => {
+                if (res.ok) fetchSensorTypes();
+            });
+    }
+}
+
+    // --- ATUR SENSOR PER USER ---
+    let setSensorsUserId = null;
+
+    async function showSetSensorsModal(userId, userName) {
+        setSensorsUserId = userId;
+        document.getElementById('setSensorsUserName').innerText = userName;
+        hideSetSensorsAlert();
+        new bootstrap.Modal(document.getElementById('setSensorsModal')).show();
+
+        try {
+            const [typesRes, assignedRes] = await Promise.all([
+                fetch('/api/admin/sensor-types'),
+                fetch(`/api/admin/users/${userId}/sensors`)
+            ]);
+            const typesData = await typesRes.json();
+            const assignedData = await assignedRes.json();
+            const types = typesData.sensor_types || [];
+            const assignedSet = new Set(assignedData.sensor_type_ids || []);
+
+            const checklist = document.getElementById('setSensorsChecklist');
+            if (types.length === 0) {
+                checklist.innerHTML = '<div class="text-muted small">Belum ada tipe sensor. Buat dulu di tab Kelola Sensor.</div>';
+                return;
+            }
+            checklist.innerHTML = types.map(t => `
+                <div class="form-check border rounded p-2 px-3 shadow-sm" style="cursor:pointer;">
+                    <input class="form-check-input me-2" type="checkbox" value="${t.ID}" id="sensel_${t.ID}" ${assignedSet.has(t.ID) ? 'checked' : ''} ${!t.aktif ? 'disabled' : ''}>
+                    <label class="form-check-label" for="sensel_${t.ID}">
+                        <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${t.warna};margin-right:6px;"></span>
+                        <strong>${t.nama}</strong>
+                        <span class="text-muted">(${t.unit})</span>
+                        ${!t.aktif ? '<span class="ms-2 badge badge-soft-danger">Nonaktif</span>' : ''}
+                    </label>
+                </div>
+            `).join('');
+        } catch (err) {
+            showSetSensorsAlert('Gagal memuat daftar sensor.', 'danger');
+        }
+    }
+
+    function hideSetSensorsAlert() {
+        document.getElementById('setSensorsAlert').classList.add('d-none');
+    }
+
+    function showSetSensorsAlert(msg, type) {
+        const el = document.getElementById('setSensorsAlert');
+        el.className = `alert alert-${type} small fw-semibold`;
+        el.innerText = msg;
+        el.classList.remove('d-none');
+    }
+
+    async function saveUserSensors() {
+        const checked = Array.from(document.querySelectorAll('#setSensorsChecklist input[type=checkbox]:checked'))
+            .map(cb => parseInt(cb.value));
+        try {
+            const res = await fetch(`/api/admin/users/${setSensorsUserId}/sensors`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sensor_type_ids: checked })
+            });
+            const result = await res.json();
+            if (res.ok) {
+                bootstrap.Modal.getInstance(document.getElementById('setSensorsModal')).hide();
+            } else {
+                showSetSensorsAlert(result.error || 'Gagal menyimpan sensor user.', 'danger');
+            }
+        } catch (err) {
+            showSetSensorsAlert('Tidak dapat terhubung ke server.', 'danger');
+        }
+    }
+
+    // --- KELOLA API KEY ---
+    async function fetchApiKeys() {
+        try {
+            const res = await fetch('/api/admin/api-keys');
+            if (!res.ok) return;
+            const data = await res.json();
+            const keys = data.keys || [];
+            const activeCount = keys.filter(k => k.active).length;
+            document.getElementById('activeKeyCount').innerText = `${activeCount} Key Aktif`;
+            renderApiKeyTable(keys);
+        } catch (err) {
+            console.error("Gagal mengambil data API key:", err);
+        }
+    }
+
+    function renderApiKeyTable(keys) {
+        const tbody = document.getElementById('apiKeyTableBody');
+        if (keys.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted"><i class="bi bi-key fs-4 d-block mb-1"></i>Belum ada API Key.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = keys.map((k, i) => {
+            const date = new Date(k.CreatedAt).toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' });
+            const statusBadge = k.active
+                ? '<span class="badge badge-soft-success">Aktif</span>'
+                : '<span class="badge badge-soft-danger">Nonaktif</span>';
+            const toggleLabel = k.active ? 'Nonaktifkan' : 'Aktifkan';
+            const toggleIcon = k.active ? 'bi-pause-circle' : 'bi-play-circle';
+            const toggleClass = k.active ? 'btn-warning' : 'btn-success';
+            return `
+                <tr>
+                    <td class="ps-3 text-secondary">${i + 1}</td>
+                    <td class="fw-bold text-slate-700">${k.name}</td>
+                    <td><span class="api-key-cell">${k.key}</span></td>
+                    <td>${statusBadge}</td>
+                    <td class="text-muted small">${date}</td>
+                    <td class="text-center">
+                        <button class="btn ${toggleClass} btn-sm fw-bold px-2 me-1 shadow-sm" onclick="toggleApiKey(${k.ID})" title="${toggleLabel}">
+                            <i class="bi ${toggleIcon}"></i>
+                        </button>
+                        <button class="btn btn-danger btn-sm fw-bold px-2 shadow-sm" onclick="deleteApiKey(${k.ID})" title="Hapus">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function showCreateApiKeyModal() {
+        document.getElementById('newKeyName').value = '';
+        new bootstrap.Modal(document.getElementById('createKeyModal')).show();
+    }
+
+    async function createApiKey() {
+        const name = document.getElementById('newKeyName').value.trim();
+        if (!name) { alert("Nama key harus diisi!"); return; }
+
+        try {
+            const res = await fetch('/api/admin/api-keys', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name })
+            });
+            const result = await res.json();
+            if (res.ok) {
+                bootstrap.Modal.getInstance(document.getElementById('createKeyModal')).hide();
+                document.getElementById('createdKeyName').innerText = result.key.name;
+                document.getElementById('createdKeyValue').innerText = result.key.key;
+                new bootstrap.Modal(document.getElementById('showKeyModal')).show();
+                fetchApiKeys();
+            } else {
+                alert(result.error || "Gagal membuat API Key.");
+            }
+        } catch (err) {
+            console.error("Gagal membuat API Key:", err);
+        }
+    }
+
+    async function toggleApiKey(id) {
+        try {
+            const res = await fetch(`/api/admin/api-keys/${id}/toggle`, { method: 'POST' });
+            if (res.ok) fetchApiKeys();
+        } catch (err) {
+            console.error("Gagal toggle API Key:", err);
+        }
+    }
+
+    async function deleteApiKey(id) {
+        if (!confirm("Yakin ingin menghapus API Key ini?")) return;
+        try {
+            const res = await fetch(`/api/admin/api-keys/${id}`, { method: 'DELETE' });
+            if (res.ok) fetchApiKeys();
+        } catch (err) {
+            console.error("Gagal menghapus API Key:", err);
+        }
+    }
+
+    // --- UTILS ---
+    function updateClock() {
+        document.getElementById('topbarClock').innerText = new Date().toLocaleString('id-ID', {
+            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+            hour: '2-digit', minute: '2-digit', second: '2-digit'
+        });
+    }
+
+    async function logout() {
+        await fetch('/api/logout', { method: 'POST' });
+        window.location.href = '/';
+    }
+
+    // --- SIDEBAR TOGGLE: lipat (desktop) / off-canvas (mobile) ---
+    const isMobileView = () => window.innerWidth < 992;
+
+    function applySidebarState() {
+        if (isMobileView()) {
+            document.body.classList.remove('sidebar-collapsed');
+            document.body.classList.remove('sidebar-open');
+        } else {
+            document.body.classList.remove('sidebar-open');
+            if (localStorage.getItem('codSidebarCollapsed') === '1') {
+                document.body.classList.add('sidebar-collapsed');
+            } else {
+                document.body.classList.remove('sidebar-collapsed');
+            }
+        }
+    }
+
+    function closeSidebarMobile() {
+        document.body.classList.remove('sidebar-open');
+    }
+
+    document.getElementById('sidebarToggle').addEventListener('click', () => {
+        if (isMobileView()) {
+            document.body.classList.toggle('sidebar-open');
+        } else {
+            const collapsed = document.body.classList.toggle('sidebar-collapsed');
+            localStorage.setItem('codSidebarCollapsed', collapsed ? '1' : '0');
+        }
+    });
+
+    document.querySelectorAll('.sidebar .nav-link, .sidebar .btn').forEach(el => {
+        el.addEventListener('click', closeSidebarMobile);
+    });
+
+    window.addEventListener('resize', applySidebarState);
+    applySidebarState();
+
+    updateClock();
+    setInterval(updateClock, 1000);
+    fetchUsers();
+
+    // --- DARK MODE & FULLSCREEN ---
+    const themeToggleBtn = document.getElementById('themeToggle');
+    const themeBtnIcon = themeToggleBtn.querySelector('i');
+    const fullscreenBtn = document.getElementById('fullscreenToggle');
+    const fullscreenBtnIcon = fullscreenBtn.querySelector('i');
+
+    function applyTheme(theme) {
+        document.body.classList.toggle('dark', theme === 'dark');
+        localStorage.setItem('theme', theme);
+        themeBtnIcon.className = theme === 'dark' ? 'bi bi-sun' : 'bi bi-moon-stars';
+    }
+
+    themeToggleBtn.onclick = () => {
+        applyTheme(document.body.classList.contains('dark') ? 'light' : 'dark');
+    };
+
+    function updateFullscreenIcon() {
+        fullscreenBtnIcon.className = document.fullscreenElement
+            ? 'bi bi-fullscreen-exit'
+            : 'bi bi-arrows-fullscreen';
+    }
+
+    fullscreenBtn.onclick = () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(() => {});
+        } else {
+            document.exitFullscreen();
+        }
+    };
+
+    document.addEventListener('fullscreenchange', updateFullscreenIcon);
+
+    if (localStorage.getItem('theme') === 'dark') applyTheme('dark');
+</script>
+</body>
+</html>
