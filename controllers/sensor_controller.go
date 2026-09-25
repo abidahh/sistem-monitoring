@@ -3,10 +3,12 @@ package controllers
 import (
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"math"
 	"math/rand"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -15,14 +17,19 @@ import (
 
 	"sistem-monitoring-cod_golang/config"
 	"sistem-monitoring-cod_golang/models"
+	"sistem-monitoring-cod_golang/realtime"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 var (
 	readInterval  = 3
 	settingsMutex sync.RWMutex
+	// externalKeyRe memvalidasi nama sensor / shelter_id dari URL agar aman
+	// diteruskan ke API eksternal (mencegah injeksi path/query).
+	externalKeyRe = regexp.MustCompile(`^[A-Za-z0-9_.-]{1,64}$`)
 
 	// Deteksi lonjakan: nilai dianggap lonjakan bila selisih dari bacaan
 	// sebelumnya melebihi max(absMin, ratio x nilai sebelumnya).
@@ -85,7 +92,7 @@ func IsSimulatorRunning() bool {
 // Inisialisasi interval dari Database saat server dinyalakan
 func InitIntervalSetting() {
 	var settingInterval models.Setting
-	if err := config.DB.Where("key = ?", "sensor_interval").First(&settingInterval).Error; err == nil {
+	if err := config.DB.Where("`key` = ?", "sensor_interval").First(&settingInterval).Error; err == nil {
 		if val, err := strconv.Atoi(settingInterval.Value); err == nil && val > 0 {
 			readInterval = val
 		}
@@ -105,7 +112,7 @@ func getSpikeDetectionConfig() (bool, float64, float64) {
 // InitSpikeSetting memuat pengaturan deteksi lonjakan dari DB saat start.
 func InitSpikeSetting() {
 	var s models.Setting
-	if err := config.DB.Where("key = ?", "spike_detection_enabled").First(&s).Error; err == nil {
+	if err := config.DB.Where("`key` = ?", "spike_detection_enabled").First(&s).Error; err == nil {
 		settingsMutex.Lock()
 		spikeEnabled = s.Value == "true"
 		settingsMutex.Unlock()
@@ -113,7 +120,7 @@ func InitSpikeSetting() {
 		saveOrUpdateSetting("spike_detection_enabled", "true")
 	}
 
-	if err := config.DB.Where("key = ?", "spike_jump_ratio").First(&s).Error; err == nil {
+	if err := config.DB.Where("`key` = ?", "spike_jump_ratio").First(&s).Error; err == nil {
 		if v, convErr := strconv.ParseFloat(s.Value, 64); convErr == nil && v > 0 {
 			settingsMutex.Lock()
 			spikeJumpRatio = v
@@ -123,7 +130,7 @@ func InitSpikeSetting() {
 		saveOrUpdateSetting("spike_jump_ratio", "0.5")
 	}
 
-	if err := config.DB.Where("key = ?", "spike_abs_min").First(&s).Error; err == nil {
+	if err := config.DB.Where("`key` = ?", "spike_abs_min").First(&s).Error; err == nil {
 		if v, convErr := strconv.ParseFloat(s.Value, 64); convErr == nil && v >= 0 {
 			settingsMutex.Lock()
 			spikeAbsMin = v
@@ -161,17 +168,6 @@ func detectAnomaly(sensorTypeID uint, value float64) bool {
 	return isSpikeReading(prev.Value, value, ratio, absMin)
 }
 
-// GetDashboardApiKey mengembalikan API key aktif pertama untuk dipakai
-// dashboard mengirim data simulasi ke backend agar riwayat/ekspor terisi.
-func GetDashboardApiKey(c *gin.Context) {
-	var key models.ApiKey
-	if err := config.DB.Where("active = ?", true).Order("id asc").First(&key).Error; err != nil {
-		c.JSON(http.StatusOK, gin.H{"api_key": ""})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"api_key": key.Key})
-}
-
 // 1. RECEIVE DATA DARI SENSOR / RASPBERRY PI (payload per-sensor via HTTP)
 func StoreSensorData(c *gin.Context) {
 	var input struct {
@@ -181,6 +177,11 @@ func StoreSensorData(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
+		var mbe *http.MaxBytesError
+		if errors.As(err, &mbe) {
+			c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": "Payload data sensor terlalu besar!"})
+			return
+		}
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Format data sensor tidak valid! Kirim sensor_type_id dan value."})
 		return
 	}
@@ -203,10 +204,44 @@ func StoreSensorData(c *gin.Context) {
 	})
 }
 
+// StoreSimulatedData menyimpan pembacaan simulasi dari dashboard (sumber
+// "simulasi"). Endpoint ini memakai verifikasi sesi login, bukan API key,
+// sehingga key polos tidak perlu dibocorkan ke browser.
+func StoreSimulatedData(c *gin.Context) {
+	var input struct {
+		SensorTypeID uint    `json:"sensor_type_id" binding:"required"`
+		Value        float64 `json:"value" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Format data simulasi tidak valid! Kirim sensor_type_id dan value."})
+		return
+	}
+
+	thresholdExceeded, isAnomaly, err := recordSensorReading(input.SensorTypeID, input.Value, "simulasi")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message":            "Data simulasi berhasil disimpan!",
+		"threshold_exceeded": thresholdExceeded,
+		"is_anomaly":         isAnomaly,
+	})
+}
+
 // SaveSensorReadingPublic adalah pembungkus ekspor untuk saveSensorReading,
 // dipakai oleh pembaca hardware (Modbus/serial). Data diasumsikan real-time.
 func SaveSensorReadingPublic(sensorTypeID uint, value float64) (bool, error) {
 	return saveSensorReading(sensorTypeID, value, "real")
+}
+
+// SaveSensorReadingMQTT menyimpan bacaan yang datang dari subscriber MQTT
+// (sumber "mqtt"). Perilaku sama dengan jalur lain: validasi, simpan, dan
+// cek ambang batas.
+func SaveSensorReadingMQTT(sensorTypeID uint, value float64) error {
+	_, _, err := recordSensorReading(sensorTypeID, value, "mqtt")
+	return err
 }
 
 // saveSensorReading memvalidasi tipe sensor, menyimpan pembacaan, dan mencatat
@@ -249,9 +284,12 @@ func recordSensorReading(sensorTypeID uint, value float64, sumber string) (bool,
 	thresholdExceeded := false
 	if st.NilaiMax > 0 && value > st.NilaiMax {
 		thresholdExceeded = true
-		logNotification(st.Nama, value, st.NilaiMax,
-			fmt.Sprintf("%s %.1f %s melebihi batas aman %.1f %s", st.Nama, value, st.Unit, st.NilaiMax, st.Unit))
+		msg := fmt.Sprintf("%s %.1f %s melebihi batas aman %.1f %s", st.Nama, value, st.Unit, st.NilaiMax, st.Unit)
+		logNotification(st.Nama, st.ID, value, st.NilaiMax, msg)
 	}
+
+	// Siarkan pembacaan baru ke dashboard real-time (WebSocket).
+	realtime.PublishReading(st.ID, value, data.CreatedAt, isAnomaly, thresholdExceeded)
 
 	return thresholdExceeded, isAnomaly, nil
 }
@@ -310,7 +348,7 @@ func UpdateIntervalSetting(c *gin.Context) {
 
 func saveOrUpdateSetting(key string, val string) {
 	var setting models.Setting
-	if err := config.DB.Where("key = ?", key).First(&setting).Error; err == nil {
+	if err := config.DB.Where("`key` = ?", key).First(&setting).Error; err == nil {
 		setting.Value = val
 		config.DB.Save(&setting)
 	} else {
@@ -318,21 +356,32 @@ func saveOrUpdateSetting(key string, val string) {
 	}
 }
 
-func logNotification(tipe string, nilai, batas float64, pesan string) {
+func logNotification(tipe string, sensorTypeID uint, nilai, batas float64, pesan string) {
 	logEntry := models.NotificationLog{
-		Tipe:  tipe,
-		Nilai: nilai,
-		Batas: batas,
-		Pesan: pesan,
+		SensorTypeID: sensorTypeID,
+		Tipe:         tipe,
+		Nilai:        nilai,
+		Batas:        batas,
+		Pesan:        pesan,
 	}
 	if err := config.DB.Create(&logEntry).Error; err != nil {
 		log.Println("Gagal menyimpan notifikasi:", err)
+		return
 	}
+	realtime.PublishNotification(logEntry.ID, sensorTypeID, tipe, pesan, nilai, logEntry.CreatedAt)
 }
 
 func GetNotificationLogs(c *gin.Context) {
+	// Notifikasi dibatasi ke sensor yang tampil untuk user yang login, sama
+	// seperti data sensor/history, agar riwayat tidak bocor antar user.
+	ids, err := currentUserSensorTypeIDs(c)
+	if err != nil || len(ids) == 0 {
+		c.JSON(http.StatusOK, gin.H{"logs": []models.NotificationLog{}})
+		return
+	}
+
 	var logs []models.NotificationLog
-	config.DB.Order("created_at desc").Limit(50).Find(&logs)
+	config.DB.Where("sensor_type_id IN ?", ids).Order("created_at desc").Limit(50).Find(&logs)
 	c.JSON(http.StatusOK, gin.H{"logs": logs})
 }
 
@@ -390,6 +439,34 @@ type sensorStats struct {
 	Max   float64 `json:"max"`
 	Avg   float64 `json:"avg"`
 	Total int64   `json:"count"`
+}
+
+// GetSensorDataDebug endpoint untuk debugging data sensor via terminal
+func GetSensorDataDebug(c *gin.Context) {
+	var sensorData []models.SensorData
+	config.DB.Preload("SensorType").Order("created_at desc").Limit(20).Find(&sensorData)
+
+	debugData := make([]map[string]interface{}, 0, len(sensorData))
+	for _, data := range sensorData {
+		debugData = append(debugData, map[string]interface{}{
+			"id":           data.ID,
+			"sensor_name":  data.SensorType.Nama,
+			"sensor_unit":  data.SensorType.Unit,
+			"sensor_source": data.SensorType.Sumber,
+			"external_key": data.SensorType.ExternalKey,
+			"value":        data.Value,
+			"data_source":  data.Sumber,
+			"is_anomaly":   data.IsAnomaly,
+			"created_at":   data.CreatedAt,
+			"time_ago":     time.Since(data.CreatedAt).String(),
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"total_count": len(debugData),
+		"data":        debugData,
+		"server_time": time.Now(),
+	})
 }
 
 func GetSensorStats(c *gin.Context) {
@@ -504,7 +581,7 @@ func StartSimulator() {
 
 				// Cek threshold di simulator juga
 				if st.NilaiMax > 0 && data.Value > st.NilaiMax {
-					logNotification(st.Nama, data.Value, st.NilaiMax,
+					logNotification(st.Nama, st.ID, data.Value, st.NilaiMax,
 						fmt.Sprintf("%s %.1f %s melebihi batas aman %.1f %s", st.Nama, data.Value, st.Unit, st.NilaiMax, st.Unit))
 				}
 			}
@@ -531,7 +608,7 @@ func GetCurrentAverageWindow() int {
 // InitAverageSetting memuat pengaturan jendela rata-rata dari DB saat start.
 func InitAverageSetting() {
 	var s models.Setting
-	if err := config.DB.Where("key = ?", "average_window_minutes").First(&s).Error; err == nil {
+	if err := config.DB.Where("`key` = ?", "average_window_minutes").First(&s).Error; err == nil {
 		if val, err := strconv.Atoi(s.Value); err == nil && val >= 1 && val <= averageMaxMinutes {
 			settingsMutex.Lock()
 			averageWindowMinutes = val
@@ -569,6 +646,92 @@ func UpdateAverageSetting(c *gin.Context) {
 		"message":        "Jendela rata-rata berhasil diperbarui!",
 		"window_minutes": input.WindowMinutes,
 	})
+}
+
+// ================================================================
+// PERSISTENSI RATA-RATA (TABEL sensor_averages)
+// ================================================================
+
+const (
+	avgSchedulerTick    = 60 * time.Second
+	avgBackfillBuckets  = 12 // jumlah bucket terakhir yang diisi saat start
+)
+
+// closedWindowStart mengembalikan awal bucket jendela penuh yang tepat sudah
+// lewat (tutup), sejajar ke epoch detik — boundary identik dengan
+// bucket5SQLExpr agar konsisten dengan riwayat live.
+func closedWindowStart(now time.Time, windowSecs int) time.Time {
+	trunc := now.Unix() - (now.Unix() % int64(windowSecs))
+	return time.Unix(trunc-int64(windowSecs), 0).UTC()
+}
+
+// persistAverageBucket menghitung rata-rata sensor_data pada satu bucket
+// (is_anomaly=false) lalu menyimpannya ke sensor_averages (upsert).
+func persistAverageBucket(sensorTypeID uint, windowStart time.Time, windowSecs int) error {
+	windowEnd := windowStart.Add(time.Duration(windowSecs) * time.Second)
+	var avg float64
+	var cnt int64
+	if err := config.DB.Model(&models.SensorData{}).
+		Where("sensor_type_id = ? AND created_at >= ? AND created_at < ? AND is_anomaly = ?",
+			sensorTypeID, windowStart, windowEnd, false).
+		Select("COALESCE(AVG(value),0), COUNT(*)").Row().Scan(&avg, &cnt); err != nil {
+		return err
+	}
+	if cnt == 0 {
+		return nil // bucket tanpa data tidak perlu disimpan
+	}
+
+	rec := models.SensorAverage{
+		SensorTypeID: sensorTypeID,
+		WindowStart:  windowStart,
+		WindowSecs:   windowSecs,
+		Average:      math.Round(avg*10) / 10,
+		Total:        cnt,
+	}
+	return config.DB.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "sensor_type_id"}, {Name: "window_start"}, {Name: "window_secs"}},
+		DoUpdates: clause.AssignmentColumns([]string{"average", "total", "updated_at"}),
+	}).Create(&rec).Error
+}
+
+// persistLatestClosedBuckets menulis rata-rata untuk sejumlah bucket penuh
+// terakhir (dihitung mundur dari waktu sekarang) untuk semua tipe sensor
+// yang pernah punya data.
+func persistLatestClosedBuckets(buckets int) {
+	windowSecs := GetCurrentAverageWindow() * 60
+	var ids []uint
+	if err := config.DB.Model(&models.SensorData{}).Distinct().Pluck("sensor_type_id", &ids).Error; err != nil || len(ids) == 0 {
+		return
+	}
+
+	now := time.Now()
+	persisted := 0
+	for _, id := range ids {
+		for i := 0; i < buckets; i++ {
+			start := closedWindowStart(now.Add(-time.Duration(i)*time.Duration(windowSecs)*time.Second), windowSecs)
+			if err := persistAverageBucket(id, start, windowSecs); err != nil {
+				log.Printf("[AVG] Gagal persist sensor #%d bucket %s: %v", id, start.Format(time.RFC3339), err)
+				continue
+			}
+			persisted++
+		}
+	}
+	log.Printf("[AVG] Persist %d bucket rata-rata selesai (jendela %d menit, %d sensor)",
+		persisted, windowSecs/60, len(ids))
+}
+
+// StartAverageScheduler menulis rata-rata bucket tersimpan setiap menit dari
+// sensor_data, tanpa mengubah jalur tampilan (kartu & riwayat tetap live).
+func StartAverageScheduler() {
+	go func() {
+		time.Sleep(3 * time.Second) // tunggu seed & koneksi DB stabil
+		persistLatestClosedBuckets(avgBackfillBuckets)
+		ticker := time.NewTicker(avgSchedulerTick)
+		defer ticker.Stop()
+		for range ticker.C {
+			persistLatestClosedBuckets(1)
+		}
+	}()
 }
 
 // GetSpikeSetting mengembalikan konfigurasi deteksi lonjakan untuk UI admin.
@@ -626,7 +789,12 @@ func UpdateSpikeSetting(c *gin.Context) {
 
 // bucket5SQLExpr menghasilkan ekspresi SQL yang membulatkan created_at ke awal
 // kotak jendela rata-rata (windowSecs detik). Dipakai untuk agregasi riwayat.
+// Dialek-aware: SQLite pakai strftime, MySQL pakai UNIX_TIMESTAMP, agar kedua
+// database memberikan hasil yang setara (bucket sejajar epoch detik UTC).
 func bucket5SQLExpr(windowSecs int) string {
+	if config.DBIsMySQL() {
+		return "FROM_UNIXTIME(UNIX_TIMESTAMP(created_at) - (UNIX_TIMESTAMP(created_at) % " + strconv.Itoa(windowSecs) + "))"
+	}
 	return "datetime((strftime('%s', created_at) - (strftime('%s', created_at) % " + strconv.Itoa(windowSecs) + ")), 'unixepoch')"
 }
 
@@ -791,4 +959,47 @@ func GetAverage5History(c *gin.Context) {
 		"limit":          limit,
 		"total_pages":    totalPages,
 	})
+}
+
+// GetExternalHistory proxy ke API eksternal shelter.cbinstrument.com
+// GET /api/external/history/:sensor_type?shelter_id=SHELTER-01&limit=24
+// sensor_type: kunci sensor eksternal (temperature, humidity, air_quality, light_level, dll)
+// limit: maks 500 titik (default 24), shelter_id default SHELTER-01
+func GetExternalHistory(c *gin.Context) {
+	sensorType := c.Param("sensor_type")
+	limit := c.DefaultQuery("limit", "24")
+	shelterID := c.DefaultQuery("shelter_id", "SHELTER-01")
+
+	// Validasi ringan agar tidak bisa menyusupkan path/query ke URL eksternal.
+	if !externalKeyRe.MatchString(sensorType) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Nama sensor tidak valid"})
+		return
+	}
+	if !externalKeyRe.MatchString(shelterID) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "shelter_id tidak valid"})
+		return
+	}
+	limitNum, err := strconv.Atoi(limit)
+	if err != nil || limitNum < 1 {
+		limitNum = 24
+	}
+	if limitNum > 500 {
+		limitNum = 500
+	}
+
+	url := fmt.Sprintf("https://shelter.cbinstrument.com/sensor/history/%s?shelter_id=%s&limit=%d",
+		sensorType, shelterID, limitNum)
+
+	req, _ := http.NewRequestWithContext(c.Request.Context(), http.MethodGet, url, nil)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "Gagal menghubungi API eksternal: " + err.Error()})
+		return
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	c.Data(resp.StatusCode, "application/json", body)
 }

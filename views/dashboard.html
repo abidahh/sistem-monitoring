@@ -257,6 +257,10 @@
             background-color: #4ade80;
         }
 
+        .status-dot-realtime { background-color: #facc15; }
+        .status-dot-off { background-color: #f87171; }
+        .status-dot-on { background-color: #4ade80; }
+
         .mode-badge-sidebar {
             font-size: 0.75rem;
             padding: 6px 12px;
@@ -306,6 +310,51 @@
             --bs-table-color: var(--body-text);
             --bs-table-border-color: #2b3446;
         }
+
+        /* ===== ALARM AMBANG BATAS ===== */
+        .alarm-banner {
+            position: fixed;
+            top: 64px;
+            left: 0;
+            right: 0;
+            z-index: 1060;
+            background: #dc2626;
+            color: #fff;
+            padding: 10px 16px;
+            display: none;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 4px 16px rgba(220, 38, 38, 0.45);
+            animation: alarmPulse 1s ease-in-out infinite;
+        }
+        .alarm-banner.show { display: flex; }
+        .alarm-banner .alarm-text { flex: 1; font-weight: 700; font-size: 0.9rem; }
+        @keyframes alarmPulse {
+            0%, 100% { background: #dc2626; }
+            50% { background: #991b1b; }
+        }
+        .alarm-silence-btn {
+            position: fixed;
+            right: 18px;
+            bottom: 18px;
+            z-index: 1060;
+            display: none;
+            align-items: center;
+            gap: 6px;
+            border-radius: 50px;
+            padding: 10px 18px;
+            font-weight: 700;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+        }
+        .alarm-silence-btn.show { display: inline-flex; }
+        .notif-badge {
+            background: #dc2626;
+            color: #fff;
+            border-radius: 20px;
+            padding: 1px 8px;
+            font-size: 0.68rem;
+            font-weight: 700;
+        }
     </style>
 </head>
 <body>
@@ -317,8 +366,8 @@
         </button>
         <i class="bi bi-water fs-3"></i>
         <div>
-            <div class="topbar-title">Sistem Monitoring COD &amp; Suhu Air</div>
-            <div class="topbar-subtitle d-none d-md-block">Real-Time Water Quality Monitoring System</div>
+            <div class="topbar-title" id="dashboardTopbarTitle">Monitoring System</div>
+            <div class="topbar-subtitle d-none d-md-block">Smart Shelter Environmental Monitoring System</div>
         </div>
     </div>
     <div class="d-flex align-items-center gap-2">
@@ -329,15 +378,25 @@
             <i class="bi bi-arrows-fullscreen" id="fullscreenIcon"></i>
         </button>
         <span class="status-online"><span class="status-dot"></span> Online</span>
+        <span class="status-online" id="wsStatus" title="Koneksi real-time ke server"><span class="status-dot status-dot-realtime" id="wsDot"></span> <span id="wsText">Realtime…</span></span>
         <span class="topbar-clock d-none d-md-inline" id="topbarClock">--</span>
     </div>
 </header>
+
+<!-- BANNER ALARM AMBANG BATAS -->
+<div class="alarm-banner" id="alarmBanner">
+    <i class="bi bi-exclamation-triangle-fill fs-4"></i>
+    <div class="alarm-text" id="alarmText">—</div>
+</div>
+<button type="button" class="btn btn-dark alarm-silence-btn" id="alarmSilenceBtn" onclick="silenceAlarm()" title="Bisukan suara sekarang (otomatis senyap setelah 30 detik; status tetap tampil)">
+    <i class="bi bi-volume-mute-fill"></i> Silence
+</button>
 
 <div class="d-flex">
     <!-- SIDEBAR -->
     <div class="sidebar d-flex flex-column p-3">
         <a href="#" class="d-flex align-items-center mb-4 me-md-auto sidebar-brand text-decoration-none fs-5 fw-bold px-2 pt-2">
-            <i class="bi bi-water me-2 text-primary"></i> COD Monitor
+            <i class="bi bi-water me-2 text-primary"></i>
         </a>
         <hr class="mt-0 border-secondary opacity-25">
         <ul class="nav nav-pills flex-column mb-auto">
@@ -352,8 +411,9 @@
                 </a>
             </li>
             <li>
-                <a class="nav-link" id="menuNotif" onclick="switchTab('notif')">
+                <a class="nav-link d-flex align-items-center" id="menuNotif" onclick="switchTab('notif')">
                     <i class="bi bi-bell me-2"></i> Notifikasi
+                    <span class="notif-badge ms-auto d-none" id="notifBadge">0</span>
                 </a>
             </li>
 
@@ -451,7 +511,7 @@
                     <span class="badge bg-light text-secondary border px-3 py-2 fw-semibold" id="intervalBadge">Auto Refresh (3s)</span>
                 </div>
                 <div class="card-body p-4">
-                    <div class="chart-wrap"><canvas id="monitoringChart" style="max-height: 380px;"></canvas></div>
+                    <div class="chart-wrap"><canvas id="monitoringChart"></canvas></div>
                 </div>
             </div>
         </div>
@@ -666,6 +726,11 @@
                                     <label class="form-label fw-semibold text-slate-700">Password Baru</label>
                                     <input type="password" class="form-control" id="editNewPass" placeholder="Minimal 6 karakter">
                                 </div>
+                                <div class="col-12">
+                                    <label class="form-label fw-semibold text-slate-700">Ubah Judul Dashboard</label>
+                                    <input type="text" class="form-control" id="editCustomTitle" placeholder="Contoh: Monitoring Industri PT. ABC">
+                                    <div class="form-text small text-muted">Judul yang akan tampil di bagian atas dashboard (topbar). Kosongkan untuk menggunakan judul default.</div>
+                                </div>
                                 <div class="col-12 d-flex align-items-center gap-2">
                                     <button type="submit" class="btn btn-primary fw-bold px-4" id="profileSubmitBtn">
                                         <i class="bi bi-check2 me-1"></i> Simpan Perubahan
@@ -682,18 +747,155 @@
     </div>
 </div>
 
+<!-- MODAL GRAFIK EKSTERNAL (shelter.cbinstrument.com) -->
+<div class="modal fade" id="externalChartModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="extChartTitle"><i class="bi bi-graph-up me-2 text-primary"></i>Grafik Eksternal</h5>
+                <select class="form-select form-select-sm" id="extChartLimit" style="width:auto; margin-left:8px;"
+                    onchange="reloadExternalChart()" title="Jumlah titik data">
+                    <option value="24">24 titik</option>
+                    <option value="50">50 titik</option>
+                    <option value="100">100 titik</option>
+                    <option value="200">200 titik</option>
+                    <option value="500">500 titik</option>
+                </select>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="extChartLoading" class="text-center text-muted py-4">
+                    <span class="spinner-border spinner-border-sm me-2"></span>Memuat grafik...
+                </div>
+                <div id="extChartError" class="alert alert-danger d-none small py-2"></div>
+                <div style="min-height:340px;"><canvas id="externalChartCanvas"></canvas></div>
+                <div class="text-muted small mt-2" id="extChartInfo"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     let chart;
-    let refreshIntervalId;
     let currentInterval = 3;
+    let ws = null;
+    let wsReconnectDelay = 1000;
+    let externalChart = null;
+    let currentExternalSensor = null;
+
+    // --- State alarm ambang batas & badge notifikasi ---
     let activeSensors = [];
     let isDummyMode = false;
     let dummyHistoryBuffer = [];
     let lastDummyValues = {}; // Menyimpan angka terakhir agar perubahan grafik tidak jomplang
+
+    // Fungsi untuk membuka modal grafik eksternal
+    function openExternalChart(sensorId) {
+        const st = activeSensors.find(s => s.ID === sensorId);
+        if (!st || !st.external_key) return;
+        currentExternalSensor = st;
+        const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('externalChartModal'));
+        document.getElementById('extChartTitle').innerHTML = `<i class="bi bi-graph-up me-2 text-primary"></i>Grafik Eksternal - ${st.nama}`;
+        document.getElementById('extChartLoading').classList.remove('d-none');
+        document.getElementById('extChartError').classList.add('d-none');
+        modal.show();
+        loadExternalChart(st);
+    }
+
+    // Fungsi untuk load grafik eksternal (proxy ke shelter.cbinstrument.com)
+    async function loadExternalChart(st) {
+        if (!st || !st.external_key) return;
+        const limit = document.getElementById('extChartLimit').value || 24;
+        const loading = document.getElementById('extChartLoading');
+        const errorDiv = document.getElementById('extChartError');
+        const info = document.getElementById('extChartInfo');
+
+        loading.classList.remove('d-none');
+        errorDiv.classList.add('d-none');
+        if (externalChart) { externalChart.destroy(); externalChart = null; }
+
+        try {
+            const url = `/api/external/history/${encodeURIComponent(st.external_key)}?shelter_id=SHELTER-01&limit=${limit}`;
+            const res = await fetch(url);
+            const result = await res.json();
+
+            if (!res.ok) {
+                errorDiv.textContent = result.error || 'Gagal mengambil data grafik eksternal';
+                errorDiv.classList.remove('d-none');
+                return;
+            }
+            renderExternalChart(result, st);
+            info.textContent = `Interval ${result.interval_minutes || '-'} menit · ${result.history ? result.history.length : 0} titik`;
+        } catch (err) {
+            errorDiv.textContent = 'Gagal menghubungi API eksternal: ' + err.message;
+            errorDiv.classList.remove('d-none');
+        } finally {
+            loading.classList.add('d-none');
+        }
+    }
+
+    // Fungsi untuk reload grafik (saat jumlah data berubah)
+    function reloadExternalChart() {
+        if (currentExternalSensor) loadExternalChart(currentExternalSensor);
+    }
+
+    // Fungsi untuk render grafik eksternal
+    function renderExternalChart(data, st) {
+        const ctx = document.getElementById('externalChartCanvas').getContext('2d');
+
+        if (externalChart) {
+            externalChart.destroy();
+        }
+
+        const history = data.history || [];
+        const labels = history.map(item => {
+            if (item.created_at) {
+                return String(item.created_at).replace('T', ' ').slice(0, 16);
+            }
+            return '';
+        });
+        const values = history.map(item => Number(item.value) || 0);
+
+        externalChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: `${st.nama} (${st.unit})`,
+                    data: values,
+                    borderColor: st.warna || '#627bd4',
+                    backgroundColor: 'rgba(98, 123, 212, 0.1)',
+                    borderWidth: 2,
+                    pointRadius: 3,
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false }, ticks: { maxRotation: 60, minRotation: 30, autoSkip: true, maxTicksLimit: 8 } },
+                    y: { beginAtZero: false }
+                }
+            }
+        });
+    }
     let dummyApiKey = ''; // API key untuk menyimpan data simulasi ke backend
     let avgHistoryView = false; // Tampilan sub-view riwayat rata-rata di tab Riwayat Data
     let isAdminUser = false; // Role user login (admin dapat mengatur jendela rata-rata)
+
+    // --- State alarm ambang batas & badge notifikasi ---
+    let alarmActive = false;
+    let alarmSilenced = false;
+    let alarmTimer = null;
+    let alarmAutoSilenceTimer = null;
+    let audioCtx = null;
+    let notifCount = 0;
+    let lastNotifId = 0;
+    const ALARM_AUTO_SILENCE_MS = 30000; // suara berhenti sendiri setelah 30 detik
 
     function switchTab(tabName) {
         const tabs = ['home', 'history', 'notif', 'profile'];
@@ -713,7 +915,11 @@
             if (avgHistoryView) fetchAvgHistoryData();
             else fetchHistoryData();
         }
-        if (tabName === 'notif') fetchNotificationLogs();
+        if (tabName === 'notif') {
+            notifCount = 0;
+            setNotifBadge(0);
+            fetchNotificationLogs();
+        }
         if (tabName === 'profile') fetchUserProfile();
 
         localStorage.setItem('codActiveTab', tabName);
@@ -783,9 +989,8 @@
                 document.body.classList.remove('sidebar-collapsed');
             }
         }
-    }
-
-    function closeSidebarMobile() {
+    }    
+function closeSidebarMobile() {
         document.body.classList.remove('sidebar-open');
     }
 
@@ -793,7 +998,7 @@
         if (isMobileView()) {
             document.body.classList.toggle('sidebar-open');
         } else {
-            const collapsed = document.body.classList.toggle('sidebar-collapsed');
+const collapsed = document.body.classList.toggle('sidebar-collapsed');
             localStorage.setItem('codSidebarCollapsed', collapsed ? '1' : '0');
         }
     });
@@ -826,6 +1031,7 @@
             badge.className = 'mode-badge-sidebar mode-badge-real mb-3';
             badge.innerText = '✓ Menggunakan Data Hardware';
         }
+        manageDummyTimer();
         fetchSensorData();
     }
 
@@ -850,6 +1056,11 @@
         }).catch(() => {});
     }
 
+    function xTickLabel(v) {
+        const d = new Date(v);
+        return isNaN(d.getTime()) ? '' : d.toLocaleTimeString('id-ID', { hour12: false });
+    }
+
     function initChart() {
         const ctx = document.getElementById('monitoringChart').getContext('2d');
         chart = new Chart(ctx, {
@@ -859,9 +1070,23 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 animation: { duration: 600, easing: 'easeOutQuad' }, // Animasi transisi halus
-                plugins: { legend: { labels: { usePointStyle: true } } },
+                plugins: {
+                    legend: { labels: { usePointStyle: true } },
+                    tooltip: { callbacks: { title: (items) => {
+                        const it = items && items[0];
+                        return it ? xTickLabel(it.parsed && it.parsed.x != null ? it.parsed.x : (it.raw || {}).x) : '';
+                    } } }
+                },
                 scales: {
-                    x: { grid: { display: false } },
+                    // Sumbu X berbasis WAKTU (ms epoch). Setiap titik membawa
+                    // timestamp aslinya (x) sehingga dataset terselaraskan
+                    // berdasarkan waktu pembacaan, bukan indeks array.
+                    x: {
+                        type: 'linear',
+                        grid: { display: false },
+                        ticks: { callback: xTickLabel, maxTicksLimit: 10 },
+                        bounds: 'data'
+                    },
                     y: { grid: { color: '#f1f5f9' } }
                 }
             }
@@ -871,6 +1096,7 @@
     function syncChartDatasets() {
         const datasets = activeSensors.map(st => ({
             _sensorId: st.ID,
+            type: 'line',
             label: `${st.nama} (${st.unit})`,
             borderColor: st.warna,
             backgroundColor: hexToRgba(st.warna, 0.08),
@@ -878,7 +1104,11 @@
             pointRadius: 3,
             data: [],
             tension: 0.4, // Kurva grafik lebih mulus
-            fill: true
+            fill: true,
+            // Sambungkan titik-titik walaupun ada nilai null pada dataset
+            // (sensor yang tidak ikut dalam satu pesan WebSocket).
+            spanGaps: true,
+            showLine: true
         }));
         chart.data.datasets = datasets;
         chart.update();
@@ -904,7 +1134,8 @@
 
             const ds = chart.data.datasets[idx];
             if (ds && ds.data.length > 0) {
-                const m = Math.max(...ds.data.filter(v => v !== null && v !== undefined));
+                const vals = ds.data.map(p => (p && p.y != null) ? Number(p.y) : null);
+                const m = Math.max(...vals.filter(v => v !== null && v !== undefined));
                 if (m > dataMax) dataMax = m;
             }
         });
@@ -920,6 +1151,9 @@
         } else {
             yMax = Math.ceil(rawMax / 50) * 50;
         }
+
+        // Cap hard 1000 agar sumbu Y tidak melebihi 1000
+        if (yMax > 1000) yMax = 1000;
 
         chart.options.scales.y.min = 0;
         chart.options.scales.y.max = yMax;
@@ -941,7 +1175,12 @@
                                     <span class="badge badge-soft-success px-3 py-1" id="badge_${st.ID}">Aman</span>
                                 </div>
                                 <h2 class="fw-bold my-2 metric-value-safe" id="current_${st.ID}">-- ${st.unit}</h2>
-                                <span class="text-muted small">Batas Maks: <strong id="limit_${st.ID}">${Number(st.nilai_max).toFixed(1)} ${st.unit}</strong></span>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="text-muted small">Batas Maks: <strong id="limit_${st.ID}">${Number(st.nilai_max).toFixed(1)} ${st.unit}</strong></span>
+                                    <button class="btn btn-sm btn-light text-secondary border shadow-sm" onclick="openExternalChart(${st.ID})" title="Lihat grafik eksternal">
+                                        <i class="bi bi-graph-up"></i>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -995,6 +1234,7 @@
                     dummyHistoryBuffer.push({
                         time: nowTime,
                         datetime: nowDateTime,
+                        ms: Date.now(),
                         sensor_type_id: st.ID,
                         value: newVal
                     });
@@ -1004,20 +1244,14 @@
                     dummyHistoryBuffer = dummyHistoryBuffer.slice(-activeSensors.length * 12);
                 }
 
-                const timeMap = {};
-                dummyHistoryBuffer.forEach(item => {
-                    if (!timeMap[item.time]) timeMap[item.time] = {};
-                    timeMap[item.time][item.sensor_type_id] = item.value;
-                });
-
-                const uniqueTimes = Object.keys(timeMap);
-                chart.data.labels = uniqueTimes;
-
+                // Titik tiap sensor ber-timestamp sendiri (x=ms), sejajar waktu.
                 activeSensors.forEach((st, idx) => {
-                    if (chart.data.datasets[idx]) {
-                        chart.data.datasets[idx].data = uniqueTimes.map(t => timeMap[t][st.ID] ?? null);
-                    }
+                    if (!chart.data.datasets[idx]) return;
+                    chart.data.datasets[idx].data = dummyHistoryBuffer
+                        .filter(item => item.sensor_type_id === st.ID)
+                        .map(item => ({ x: item.ms, y: item.value }));
                 });
+                chart.data.labels = []; // x dari data, bukan label
                 updateYAxisRange();
                 chart.update();
 
@@ -1027,6 +1261,7 @@
                         el.innerText = `${lastDummyValues[s.ID]} ${s.unit}`;
                     }
                 });
+                updateAlarm([]);   // mode simulasi: nilai dibuat dalam rentang aman
                 return;
             }
 
@@ -1042,59 +1277,47 @@
                 if (!cur || ts > cur.ms) latestBySensor[item.sensor_type_id] = { ms: ts, value: item.value };
             });
 
-            function renderCardValue(s, val) {
-                const el = document.getElementById(`current_${s.ID}`);
-                const badge = document.getElementById(`badge_${s.ID}`);
-                if (!el) return;
-                if (val === undefined || val === null) {
-                    el.className = 'fw-bold my-2 metric-value-offline';
-                    el.innerText = `-- ${s.unit}`;
-                    if (badge) {
-                        badge.className = 'badge badge-soft-offline px-3 py-1';
-                        badge.innerText = 'Tidak Ada Data';
-                    }
-                    return;
-                }
-                const over = Number(s.nilai_max) > 0 && Number(val) > Number(s.nilai_max);
-                el.className = over ? 'fw-bold my-2 metric-value-danger' : 'fw-bold my-2 metric-value-safe';
-                el.innerText = `${val} ${s.unit}`;
-                if (badge) {
-                    badge.className = over ? 'badge badge-soft-danger px-3 py-1' : 'badge badge-soft-success px-3 py-1';
-                    badge.innerText = over ? 'Melebihi Batas' : 'Aman';
-                }
-            }
-
             if (dataList.length === 0) {
                 chart.data.labels = [];
                 chart.data.datasets.forEach(ds => ds.data = []);
                 chart.update();
-                activeSensors.forEach(s => renderCardValue(s, undefined));
+                activeSensors.forEach(s => updateCardValue(s, undefined));
+                updateAlarm([]);   // tidak ada data => tidak ada alarm
                 return;
             }
 
-            const timeMap = {};
-            dataList.forEach(item => {
-                const timeStr = new Date(item.created_at).toLocaleTimeString();
-                if (!timeMap[timeStr]) timeMap[timeStr] = {};
-                timeMap[timeStr][item.sensor_type_id] = item.value;
-            });
-
-            const uniqueTimes = Object.keys(timeMap).reverse();
-            chart.data.labels = uniqueTimes;
-
+            // Setiap sensor diisi titik {x: timestamp asli, y: nilai}, urut waktu.
+            // Tidak ada penjajaran berbasis index → tiap sensor menempati posisi
+            // sumbu-X sesuai waktu pembacaannya sendiri.
             activeSensors.forEach((st, idx) => {
-                if (chart.data.datasets[idx]) {
-                    chart.data.datasets[idx].data = uniqueTimes.map(t => timeMap[t][st.ID] ?? null);
-                }
+                const ds = chart.data.datasets[idx];
+                if (!ds) return;
+                ds.data = dataList
+                    .filter(item => item.sensor_type_id === st.ID)
+                    .map(item => ({ x: new Date(item.created_at).getTime(), y: item.value }));
             });
+            chart.data.labels = []; // x diambil dari data (linear/time), bukan label
             updateYAxisRange();
             chart.update();
 
             activeSensors.forEach(s => {
                 const info = latestBySensor[s.ID];
                 const fresh = info && (serverNow - info.ms) <= OFFLINE_MS;
-                renderCardValue(s, fresh ? info.value : undefined);
+                updateCardValue(s, fresh ? info.value : undefined);
             });
+
+            // --- ALARM: kumpulkan sensor yang melewati ambang batas (data fresh) ---
+            const overSensors = activeSensors.filter(s => {
+                const info = latestBySensor[s.ID];
+                const fresh = info && (serverNow - info.ms) <= OFFLINE_MS;
+                return fresh && Number(s.nilai_max) > 0 && Number(info.value) > Number(s.nilai_max);
+            }).map(s => ({
+                nama: s.nama,
+                value: latestBySensor[s.ID].value,
+                nilai_max: s.nilai_max,
+                unit: s.unit
+            }));
+            updateAlarm(overSensors);
 
         } catch (err) {
             console.error("Gagal mengambil data:", err);
@@ -1175,7 +1398,9 @@
 
         tbody.innerHTML = order.map((k, idx) => {
             const b = buckets[k];
-            const d = new Date(k);
+            // k adalah string UTC (hasil toISOString) — tambahkan "Z" agar
+            // di-parse sebagai UTC lalu dikonversi ke waktu lokal dengan benar.
+            const d = new Date(k + 'Z');
             const timeTxt = `${d.toLocaleDateString('id-ID')} ${d.toLocaleTimeString('id-ID')}`;
             const statusCell = b.anomaly
                 ? '<span class="badge badge-soft-danger"><i class="bi bi-exclamation-triangle me-1"></i>Lonjakan</span>'
@@ -1416,6 +1641,10 @@
                 document.getElementById('editName').value = user.nama;
                 document.getElementById('editUsername').value = user.username;
 
+                const customTitle = user.custom_title || 'Sistem Monitoring COD & Suhu Air';
+                document.getElementById('editCustomTitle').value = customTitle;
+                document.getElementById('dashboardTopbarTitle').innerText = customTitle;
+
                 isAdminUser = user.role === 'admin';
                 if (isAdminUser) {
                     document.getElementById('menuApproval').classList.remove('d-none');
@@ -1443,7 +1672,8 @@
                 body: JSON.stringify({
                     nama: document.getElementById('editName').value,
                     current_password: document.getElementById('editCurrentPass').value,
-                    new_password: document.getElementById('editNewPass').value
+                    new_password: document.getElementById('editNewPass').value,
+                    custom_title: document.getElementById('editCustomTitle').value
                 })
             });
             const result = await res.json();
@@ -1520,7 +1750,6 @@
             setTimeout(() => toast.classList.add('d-none'), 2000);
             currentInterval = seconds;
             document.getElementById('intervalBadge').innerText = `Auto Refresh (${seconds}s)`;
-            startAutoRefresh(seconds);
             fetchHistoryData();
         } catch (err) {
             console.error("Gagal menyimpan pengaturan:", err);
@@ -1560,8 +1789,136 @@
     }
 
     function startAutoRefresh(seconds) {
-        if (refreshIntervalId) clearInterval(refreshIntervalId);
-        refreshIntervalId = setInterval(fetchSensorData, seconds * 1000);
+        // Interval tidak lagi memicu polling — refresh didorong WebSocket.
+        currentInterval = seconds;
+        document.getElementById('intervalBadge').innerText = `Auto Refresh (${seconds}s)`;
+    }
+
+    // ---- WebSocket real-time: feed shelter untuk data realtime tampilan ----
+    // Frontend menyambung langsung ke feed WSS shelter; nilai dipetakan via
+    // external_key dan hanya untuk UPDATE TAMPILAN (kartu/chart) — bukan
+    // sumber database. Penyimpanan DB tetap dari backend MQTT subscriber.
+    const SHELTER_WS_URL = 'wss://shelter.cbinstrument.com/ws/sensors/SHELTER-02';
+
+    function wsURL() {
+        return SHELTER_WS_URL;
+    }
+
+    // Render nilai pada kartu metric (identik dengan renderCardValue di fetchSensorData).
+    function updateCardValue(s, val) {
+        const el = document.getElementById(`current_${s.ID}`);
+        const badge = document.getElementById(`badge_${s.ID}`);
+        if (!el) return;
+        if (val === undefined || val === null) {
+            el.className = 'fw-bold my-2 metric-value-offline';
+            el.innerText = `-- ${s.unit}`;
+            if (badge) {
+                badge.className = 'badge badge-soft-offline px-3 py-1';
+                badge.innerText = 'Tidak Ada Data';
+            }
+            return;
+        }
+        const over = Number(s.nilai_max) > 0 && Number(val) > Number(s.nilai_max);
+        el.className = over ? 'fw-bold my-2 metric-value-danger' : 'fw-bold my-2 metric-value-safe';
+        el.innerText = `${val} ${s.unit}`;
+        if (badge) {
+            badge.className = over ? 'badge badge-soft-danger px-3 py-1' : 'badge badge-soft-success px-3 py-1';
+            badge.innerText = over ? 'Melebihi Batas' : 'Aman';
+        }
+    }
+
+    // Tambahkan satu titik realtime ke chart (per sensor), batasi 40 titik terakhir.
+    function appendChartPoint(st, val) {
+        if (!chart) return;
+        const x = Date.now(); // timestamp pembacaan nyata (feed realtime)
+        activeSensors.forEach((s, idx) => {
+            const ds = chart.data.datasets[idx];
+            if (!ds || s.ID !== st.ID) return;
+            ds.data.push({ x, y: val });
+            if (ds.data.length > 40) ds.data.splice(0, ds.data.length - 40);
+        });
+        updateYAxisRange();
+        chart.update();
+    }
+
+    function setRealtimeStatus(state) {
+        const dot = document.getElementById('wsDot');
+        const txt = document.getElementById('wsText');
+        if (!dot || !txt) return;
+        if (state === 'on') {
+            dot.className = 'status-dot status-dot-on';
+            txt.innerText = 'Realtime';
+        } else if (state === 'connecting') {
+            dot.className = 'status-dot status-dot-realtime';
+            txt.innerText = 'Realtime…';
+        } else {
+            dot.className = 'status-dot status-dot-off';
+            txt.innerText = 'Offline';
+        }
+    }
+
+    function connectWS() {
+        setRealtimeStatus('connecting');
+        try { ws = new WebSocket(wsURL()); } catch (e) { setRealtimeStatus('off'); scheduleWSReconnect(); return; }
+
+        ws.onopen = function () {
+            wsReconnectDelay = 1000;
+            setRealtimeStatus('on');
+            fetchSensorData();   // re-sinkronkan setelah (ter)sambung ulang
+            pollNotificationBadge();
+        };
+
+        ws.onmessage = function (e) {
+            let ev;
+            try { ev = JSON.parse(e.data); } catch (err) { return; }
+
+            if (isDummyMode) return;  // mode dummy dirender mandiri di client
+
+            // Kumpulkan pasangan [external_key, nilai] dari format feed shelter.
+            const readings = [];
+            const dataObj = ev && typeof ev === 'object' ? ev.data : null;
+            if (dataObj && typeof dataObj === 'object' && !Array.isArray(dataObj)) {
+                for (const k in dataObj) readings.push([k, dataObj[k]]);
+            } else if (Array.isArray(ev && ev.sensors)) {
+                for (const it of ev.sensors) {
+                    if (it && it.sensor_type != null) readings.push([it.sensor_type, it.value]);
+                }
+            } else if (ev && typeof ev === 'object') {
+                for (const k in ev) {
+                    if (k === 'type' || k === 'shelter_id') continue;
+                    readings.push([k, ev[k]]);
+                }
+            }
+
+            readings.forEach(([key, raw]) => {
+                const val = Number(raw);
+                if (!Number.isFinite(val)) return;
+                const st = activeSensors.find(s => s.external_key === String(key));
+                if (!st) return;
+                updateCardValue(st, val);
+                appendChartPoint(st, val);
+            });
+        };
+
+        ws.onclose = function () {
+            setRealtimeStatus('off');
+            scheduleWSReconnect();
+        };
+        ws.onerror = function () { ws.close(); };
+    }
+
+    function scheduleWSReconnect() {
+        setTimeout(connectWS, wsReconnectDelay);
+        wsReconnectDelay = Math.min(wsReconnectDelay * 2, 30000);
+    }
+
+    // Mode simulasi (dummy) digerakkan timer lokal — tanpa polling server.
+    let dummyTimerId = null;
+    function manageDummyTimer() {
+        if (dummyTimerId) { clearInterval(dummyTimerId); dummyTimerId = null; }
+        if (isDummyMode) {
+            dummyTimerId = setInterval(fetchSensorData, Math.max(1000, currentInterval * 1000));
+        }
     }
 
     async function logout() {
@@ -1577,6 +1934,135 @@
         });
     }
 
+    // ================= ALARM AMBANG BATAS =================
+    // Audio context harus di-"unlock" lewat interaksi user (kebijakan autoplay browser).
+    function ensureAudio() {
+        try {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        } catch (e) { /* browser tanpa Web Audio */ }
+    }
+
+    function beep(freq, durMs) {
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'square';
+        osc.frequency.value = freq;
+        gain.gain.value = 0.15;
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        const t = audioCtx.currentTime;
+        osc.start(t);
+        osc.stop(t + durMs / 1000);
+    }
+
+    // Pola 2 bip tegas tiap 1.5 detik.
+    function startAlarmSound() {
+        if (alarmTimer) return;
+        const pattern = () => {
+            beep(880, 180);
+            setTimeout(() => beep(880, 180), 260);
+        };
+        pattern();
+        alarmTimer = setInterval(pattern, 1500);
+    }
+
+    function stopAlarmSound() {
+        if (alarmTimer) { clearInterval(alarmTimer); alarmTimer = null; }
+    }
+
+    // Auto-silence: hentikan suara setelah ALARM_AUTO_SILENCE_MS, banner tetap tampil.
+    function clearAutoSilence() {
+        if (alarmAutoSilenceTimer) { clearTimeout(alarmAutoSilenceTimer); alarmAutoSilenceTimer = null; }
+    }
+
+    function scheduleAutoSilence() {
+        clearAutoSilence();
+        alarmAutoSilenceTimer = setTimeout(() => {
+            alarmSilenced = true;
+            stopAlarmSound();
+        }, ALARM_AUTO_SILENCE_MS);
+    }
+
+    // Dipanggil dari fetchSensorData dengan daftar sensor yang melewati batas.
+    function updateAlarm(overSensors) {
+        const banner = document.getElementById('alarmBanner');
+        const text = document.getElementById('alarmText');
+        const silenceBtn = document.getElementById('alarmSilenceBtn');
+        const hasOver = overSensors.length > 0;
+
+        if (hasOver) {
+            text.innerText = 'ALARM: ' + overSensors.map(s =>
+                `${s.nama} ${Number(s.value).toFixed(1)} ${s.unit} (batas ${Number(s.nilai_max).toFixed(1)})`
+            ).join('  |  ');
+            banner.classList.add('show');
+            silenceBtn.classList.add('show');
+            if (!alarmActive) {           // transisi normal -> alarm
+                alarmActive = true;
+                alarmSilenced = false;
+                scheduleAutoSilence();
+            }
+            if (!alarmSilenced) startAlarmSound();
+        } else {
+            banner.classList.remove('show');
+            silenceBtn.classList.remove('show');
+            if (alarmActive) {            // kembali normal -> reset
+                alarmActive = false;
+                alarmSilenced = false;
+                stopAlarmSound();
+            }
+            clearAutoSilence();
+        }
+    }
+
+    function silenceAlarm() {
+        alarmSilenced = true;
+        stopAlarmSound();
+        clearAutoSilence();
+    }
+
+    // ================= BADGE NOTIFIKASI =================
+    function setNotifBadge(n) {
+        const el = document.getElementById('notifBadge');
+        if (!el) return;
+        if (n > 0) {
+            el.innerText = n > 99 ? '99+' : n;
+            el.classList.remove('d-none');
+        } else {
+            el.classList.add('d-none');
+        }
+    }
+
+    async function pollNotificationBadge() {
+        try {
+            const res = await fetch('/api/notifications');
+            if (!res.ok) return;
+            const data = await res.json();
+            const logs = data.logs || [];
+
+            // Sinkronkan tabel bila tab Notifikasi sedang terbuka.
+            const tabNotif = document.getElementById('tabNotif');
+            if (tabNotif && !tabNotif.classList.contains('d-none')) fetchNotificationLogs();
+
+            if (logs.length === 0) { setNotifBadge(notifCount); return; }
+            const newestId = Math.max(...logs.map(l => l.id || 0));
+            if (lastNotifId === 0) {          // sinkronisasi awal: jangan hitung data lama
+                lastNotifId = newestId;
+                return;
+            }
+            if (newestId > lastNotifId) {
+                notifCount += logs.filter(l => (l.id || 0) > lastNotifId).length;
+                lastNotifId = newestId;
+                setNotifBadge(notifCount);
+            }
+        } catch (err) { /* diamkan error jaringan */ }
+    }
+
+    // Unlock audio pada interaksi pertama user.
+    ['click', 'keydown', 'touchstart'].forEach(ev =>
+        window.addEventListener(ev, ensureAudio, { once: true }));
+
     if (localStorage.getItem('theme') === 'dark') applyTheme('dark');
 
     // Pulihkan mode & tab terakhir agar tidak kembali ke halaman utama saat reload
@@ -1591,7 +2077,16 @@
     initChart();
     fetchUserProfile().finally(loadSettings);
     fetchSensorData();
-    startAutoRefresh(currentInterval);
+    pollNotificationBadge();   // sinkronisasi awal: set baseline lastNotifId
+
+    // Real-time: nilai sensor & notifikasi baru didorong lewat WebSocket.
+    connectWS();
+    manageDummyTimer();   // mode dummy digerakkan timer lokal
+
+    // Re-sinkronkan saat tab kembali aktif (mis. setelah jaringan tidur).
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) fetchSensorData();
+    });
 </script>
 </body>
 </html>

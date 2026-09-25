@@ -4,8 +4,10 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"sistem-monitoring-cod_golang/config"
+	"sistem-monitoring-cod_golang/middleware"
 	"sistem-monitoring-cod_golang/models"
 	"sistem-monitoring-cod_golang/modbusutil"
 
@@ -16,6 +18,9 @@ import (
 
 // GET DAFTAR SEMUA TIPE SENSOR
 func GetSensorTypes(c *gin.Context) {
+	if !middleware.RequireAdmin(c) {
+		return
+	}
 	var types []models.SensorType
 	if err := config.DB.Order("id asc").Find(&types).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memuat tipe sensor!"})
@@ -24,8 +29,11 @@ func GetSensorTypes(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"sensor_types": types})
 }
 
-// BUAT TIPE SENSOR BARU (DENGAN KONFIGURASI MODBUS)
+// BUAT TIPE SENSOR BARU (DENGAN KONFIGURASI MODBUS/MQTT)
 func CreateSensorType(c *gin.Context) {
+	if !middleware.RequireAdmin(c) {
+		return
+	}
 	var input struct {
 		Nama           string  `json:"nama" binding:"required"`
 		Unit           string  `json:"unit" binding:"required"`
@@ -33,6 +41,7 @@ func CreateSensorType(c *gin.Context) {
 		Aktif          *bool   `json:"aktif"`
 		Warna          string  `json:"warna"`
 		Sumber         string  `json:"sumber"`
+		ExternalKey    string  `json:"external_key"`
 		PortCom        string  `json:"port_com"`
 		SlaveID        byte    `json:"slave_id"`
 		RegisterAddr   uint16  `json:"register_addr"`
@@ -65,8 +74,9 @@ func CreateSensorType(c *gin.Context) {
 		warna = input.Warna
 	}
 	sumber := "simulasi"
-	if input.Sumber == "real" {
-		sumber = "real"
+	switch input.Sumber {
+	case "real", "mqtt":
+		sumber = input.Sumber
 	}
 
 	// Default nilai Modbus bila tidak dikirim dari frontend
@@ -94,11 +104,22 @@ func CreateSensorType(c *gin.Context) {
 		Aktif:          aktif,
 		Warna:          warna,
 		Sumber:         sumber,
+		ExternalKey:    nullableKey(input.ExternalKey),
 		PortCom:        portCom,
 		SlaveID:        slaveID,
 		RegisterAddr:   input.RegisterAddr,
 		BaudRate:       baudRate,
 		RegisterFormat: registerFormat,
+	}
+
+	// Validasi ExternalKey unik
+	if input.ExternalKey != "" {
+		var existingKey models.SensorType
+		err := config.DB.Where("external_key = ?", input.ExternalKey).First(&existingKey).Error
+		if err == nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "External Key sudah digunakan oleh sensor lain!"})
+			return
+		}
 	}
 
 	if err := config.DB.Create(&st).Error; err != nil {
@@ -111,6 +132,9 @@ func CreateSensorType(c *gin.Context) {
 
 // UPDATE TIPE SENSOR (DENGAN KONFIGURASI MODBUS)
 func UpdateSensorType(c *gin.Context) {
+	if !middleware.RequireAdmin(c) {
+		return
+	}
 	id := c.Param("id")
 
 	var st models.SensorType
@@ -130,6 +154,7 @@ func UpdateSensorType(c *gin.Context) {
 		Aktif          *bool   `json:"aktif"`
 		Warna          string  `json:"warna"`
 		Sumber         string  `json:"sumber"`
+		ExternalKey    string  `json:"external_key"`
 		PortCom        string  `json:"port_com"`
 		SlaveID        byte    `json:"slave_id"`
 		RegisterAddr   uint16  `json:"register_addr"`
@@ -162,8 +187,20 @@ func UpdateSensorType(c *gin.Context) {
 	if input.Warna != "" {
 		st.Warna = input.Warna
 	}
-	if input.Sumber == "simulasi" || input.Sumber == "real" {
+	switch input.Sumber {
+	case "simulasi", "real", "mqtt":
 		st.Sumber = input.Sumber
+	}
+	st.ExternalKey = nullableKey(input.ExternalKey)
+
+	// Validasi ExternalKey unik
+	if input.ExternalKey != "" {
+		var existingKey models.SensorType
+		err := config.DB.Where("external_key = ? AND id != ?", input.ExternalKey, st.ID).First(&existingKey).Error
+		if err == nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "External Key sudah digunakan oleh sensor lain!"})
+			return
+		}
 	}
 
 	// Update Nilai Modbus
@@ -189,6 +226,9 @@ func UpdateSensorType(c *gin.Context) {
 
 // HAPUS TIPE SENSOR
 func DeleteSensorType(c *gin.Context) {
+	if !middleware.RequireAdmin(c) {
+		return
+	}
 	id := c.Param("id")
 
 	var st models.SensorType
@@ -282,6 +322,14 @@ func SetUserSensors(c *gin.Context) {
 }
 
 // Helper: daftar SensorTypeID yang tampil untuk user yang sedang login.
+func nullableKey(s string) *string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
 func currentUserSensorTypeIDs(c *gin.Context) ([]uint, error) {
 	session := sessions.Default(c)
 	userID, ok := session.Get("user_id").(uint)

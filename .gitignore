@@ -3,6 +3,7 @@ monitoring.db
 monitoring.db-shm
 monitoring.db-wal
 monitoring_backup_*.db
+*.session_secret
 
 # Binary hasil build
 *.exe

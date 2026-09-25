@@ -50,9 +50,10 @@ func SeedDefaultApiKey() {
 	}
 
 	defaultKey := models.ApiKey{
-		Name:   Cfg.DefaultApiKeyName,
-		Key:    Cfg.DefaultApiKey,
-		Active: true,
+		Name:    Cfg.DefaultApiKeyName,
+		KeyHash: HashAPIKey(Cfg.DefaultApiKey),
+		Masked:  MaskedKey(Cfg.DefaultApiKey),
+		Active:  true,
 	}
 
 	err := DB.Create(&defaultKey).Error
@@ -74,6 +75,9 @@ func SeedSensorTypes() {
 
 	defaultTypes := []models.SensorType{
 		{Nama: "Suhu Air", Unit: "°C", NilaiMax: 30.0, Aktif: true, Warna: "#ef4444", Sumber: "simulasi"},
+		{Nama: "Kelembaban", Unit: "%", NilaiMax: 100.0, Aktif: true, Warna: "#3b82f6", Sumber: "simulasi"},
+		{Nama: "Kualitas Udara", Unit: "AQI", NilaiMax: 200.0, Aktif: true, Warna: "#f59e0b", Sumber: "simulasi"},
+		{Nama: "Cahaya", Unit: "lux", NilaiMax: 50000.0, Aktif: true, Warna: "#22c55e", Sumber: "simulasi"},
 		{Nama: "Kadar COD", Unit: "mg/L", NilaiMax: 100.0, Aktif: true, Warna: "#0d9488", Sumber: "simulasi"},
 	}
 

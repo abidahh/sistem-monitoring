@@ -4,13 +4,18 @@ import "gorm.io/gorm"
 
 type SensorType struct {
 	gorm.Model
-	Nama     string  `gorm:"uniqueIndex;not null" json:"nama"`
+	Nama     string  `gorm:"uniqueIndex;not null;size:191" json:"nama"`
 	Unit     string  `gorm:"not null" json:"unit"`
 	NilaiMax float64 `json:"nilai_max"`
 	Aktif    bool    `gorm:"default:true" json:"aktif"`
 	Warna    string  `gorm:"default:'#0d9488'" json:"warna"`
-	// Sumber data: "simulasi" (data dibangkitkan otomatis) atau "real" (data dari hardware/serial/HTTP).
+	// Sumber data: "simulasi" (data dibangkitkan otomatis), "real" (data dari
+	// hardware Modbus/serial), atau "mqtt" (data dari broker MQTT).
 	Sumber string `gorm:"default:'simulasi'" json:"sumber"`
+	// ExternalKey key eksternal dari API/MQTT shelter (mis. "temperature", "humidity").
+	// Pointer agar sensor tanpa mapping menyimpan NULL (bukan ''), sehingga unik
+	// index tetap valid di MySQL (NULL boleh banyak; '' tidak).
+	ExternalKey *string `gorm:"uniqueIndex;size:191" json:"external_key"`
 	
 	// KOLOM DYNAMICAL MODBUS CONFIG
 	SlaveID      byte   `json:"slave_id" gorm:"default:1"`

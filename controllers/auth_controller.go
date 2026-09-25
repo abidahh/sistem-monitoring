@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"sistem-monitoring-cod_golang/config"
+	"sistem-monitoring-cod_golang/middleware"
 	"sistem-monitoring-cod_golang/models"
 
 	"github.com/gin-contrib/sessions"
@@ -25,15 +26,26 @@ func Login(c *gin.Context) {
 		return
 	}
 
+	clientIP := c.ClientIP()
+	if middleware.LoginBlocked(clientIP, input.Username) {
+		c.JSON(http.StatusTooManyRequests, gin.H{"error": "Terlalu banyak percobaan login yang gagal. Coba lagi dalam 15 menit."})
+		return
+	}
+
+	fail := func(msg string) {
+		middleware.RecordLoginFail(clientIP, input.Username)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": msg})
+	}
+
 	var user models.User
 	if err := config.DB.Where("username = ?", input.Username).First(&user).Error; err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Username atau Password salah!"})
+		fail("Username atau Password salah!")
 		return
 	}
 
 	// Cek Password
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.Password)); err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Username atau Password salah!"})
+		fail("Username atau Password salah!")
 		return
 	}
 
@@ -45,12 +57,16 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	// Simpan ke Session
+	// Regenerasi sesi: buat nilai cookie baru agar token hasil tebakan
+	// (session fixation) tidak bisa dipakai.
 	session := sessions.Default(c)
+	session.Clear()
 	session.Set("user_id", user.ID)
 	session.Set("username", user.Username)
 	session.Set("role", user.Role)
 	session.Save()
+
+	middleware.ResetLoginAttempts(clientIP, input.Username)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Login berhasil!",
@@ -61,6 +77,9 @@ func Login(c *gin.Context) {
 
 // 3. GET DAFTAR SEMUA USER (Khusus Admin)
 func GetUsers(c *gin.Context) {
+	if !middleware.RequireAdmin(c) {
+		return
+	}
 	var users []models.User
 	config.DB.Order("created_at desc").Find(&users)
 
@@ -71,11 +90,15 @@ func GetUsers(c *gin.Context) {
 
 // 4. BUAT USER BARU (Khusus Admin) - Langsung Approved
 func CreateUser(c *gin.Context) {
+	if !middleware.RequireAdmin(c) {
+		return
+	}
 	var input struct {
-		Nama     string `json:"nama" binding:"required"`
-		Username string `json:"username" binding:"required"`
-		Password string `json:"password" binding:"required,min=6"`
-		Role     string `json:"role" binding:"required"`
+		Nama        string `json:"nama" binding:"required"`
+		Username    string `json:"username" binding:"required"`
+		Password    string `json:"password" binding:"required,min=6"`
+		Role        string `json:"role" binding:"required"`
+		CustomTitle string `json:"custom_title"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -105,13 +128,19 @@ func CreateUser(c *gin.Context) {
 		return
 	}
 
+	customTitle := "Sistem Monitoring COD & Suhu Air"
+	if input.CustomTitle != "" {
+		customTitle = input.CustomTitle
+	}
+
 	newUser := models.User{
-		Nama:       input.Nama,
-		Username:   input.Username,
-		Password:   string(hashedPassword),
-		Role:       input.Role,
-		IsApproved: true,
-		Status:     "approved",
+		Nama:        input.Nama,
+		Username:    input.Username,
+		Password:    string(hashedPassword),
+		Role:        input.Role,
+		IsApproved:  true,
+		Status:      "approved",
+		CustomTitle: customTitle,
 	}
 
 	if err := config.DB.Create(&newUser).Error; err != nil {
@@ -127,6 +156,9 @@ func CreateUser(c *gin.Context) {
 
 // 5. AKTIFKAN / NONAKTIFKAN USER (Khusus Admin)
 func ToggleUserStatus(c *gin.Context) {
+	if !middleware.RequireAdmin(c) {
+		return
+	}
 	id := c.Param("id")
 
 	session := sessions.Default(c)
@@ -167,6 +199,9 @@ func ToggleUserStatus(c *gin.Context) {
 
 // 6. HAPUS USER (Khusus Admin)
 func DeleteUser(c *gin.Context) {
+	if !middleware.RequireAdmin(c) {
+		return
+	}
 	id := c.Param("id")
 
 	session := sessions.Default(c)
@@ -202,6 +237,7 @@ func Logout(c *gin.Context) {
 	session.Save()
 	c.JSON(http.StatusOK, gin.H{"message": "Berhasil logout."})
 }
+
 // 8. GET PROFILE USER LOGGED IN
 func GetProfile(c *gin.Context) {
 	session := sessions.Default(c)
@@ -214,11 +250,12 @@ func GetProfile(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"id":         user.ID,
-		"nama":       user.Nama,
-		"username":   user.Username,
-		"role":       user.Role,
-		"created_at": user.CreatedAt,
+		"id":          user.ID,
+		"nama":        user.Nama,
+		"username":    user.Username,
+		"role":        user.Role,
+		"created_at":  user.CreatedAt,
+		"custom_title": user.CustomTitle,
 	})
 }
 
@@ -237,6 +274,7 @@ func UpdateProfile(c *gin.Context) {
 		Nama        string `json:"nama" binding:"required"`
 		CurrentPass string `json:"current_password"`
 		NewPass     string `json:"new_password"`
+		CustomTitle string `json:"custom_title"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -245,6 +283,11 @@ func UpdateProfile(c *gin.Context) {
 	}
 
 	user.Nama = input.Nama
+
+	// Update custom title jika diisi
+	if input.CustomTitle != "" {
+		user.CustomTitle = input.CustomTitle
+	}
 
 	// Ganti password hanya jika new_password diisi
 	if input.NewPass != "" {
@@ -274,11 +317,12 @@ func UpdateProfile(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":    "Profil berhasil diperbarui!",
-		"id":         user.ID,
-		"nama":       user.Nama,
-		"username":   user.Username,
-		"role":       user.Role,
-		"created_at": user.CreatedAt,
+		"message":     "Profil berhasil diperbarui!",
+		"id":          user.ID,
+		"nama":        user.Nama,
+		"username":    user.Username,
+		"role":        user.Role,
+		"created_at":  user.CreatedAt,
+		"custom_title": user.CustomTitle,
 	})
 }

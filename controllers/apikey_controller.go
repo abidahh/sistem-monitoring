@@ -32,15 +32,20 @@ func CreateApiKey(c *gin.Context) {
 		return
 	}
 
+	// Hanya hash yang disimpan; key polos hanya dikembalikan sekali di respons
+	// ini supaya admin bisa menyalinnya sebelum hilang selamanya.
+	raw := generateAPIKey()
 	newKey := models.ApiKey{
-		Name:   input.Name,
-		Key:    generateAPIKey(),
-		Active: true,
+		Name:    input.Name,
+		KeyHash: config.HashAPIKey(raw),
+		Masked:  config.MaskedKey(raw),
+		Active:  true,
 	}
 	config.DB.Create(&newKey)
 
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "API Key berhasil dibuat!",
+		"api_key": raw,
 		"key":     newKey,
 	})
 }

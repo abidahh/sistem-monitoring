@@ -18,8 +18,10 @@ func ApiKeyRequired() gin.HandlerFunc {
 			return
 		}
 
+		// DB hanya menyimpan hash SHA-256, jadi header di-hash dulu sebelum lookup.
+		keyHash := config.HashAPIKey(apiKey)
 		var key models.ApiKey
-		if err := config.DB.Where("key = ? AND active = ?", apiKey, true).First(&key).Error; err != nil {
+		if err := config.DB.Where("key_hash = ? AND active = ?", keyHash, true).First(&key).Error; err != nil {
 			c.JSON(http.StatusForbidden, gin.H{"error": "API Key tidak valid atau sudah tidak aktif!"})
 			c.Abort()
 			return

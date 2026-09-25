@@ -287,7 +287,7 @@
         </button>
         <i class="bi bi-shield-lock-fill fs-3"></i>
         <div>
-            <div class="topbar-title">Sistem Monitoring COD &amp; Suhu Air</div>
+            <div class="topbar-title" id="adminTopbarTitle">Sistem Monitoring COD &amp; Suhu Air</div>
             <div class="topbar-subtitle d-none d-md-block">Panel Admin</div>
         </div>
     </div>
@@ -494,6 +494,64 @@
                 </div>
             </div>
 
+            <div class="card card-custom mb-4">
+                <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <h6 class="mb-0 fw-bold text-slate-700"><i class="bi bi-wifi me-2 text-primary"></i>Konfigurasi MQTT</h6>
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="small text-muted">Status:</span>
+                            <span id="mqttStatusBadge" class="badge badge-soft-secondary">Memuat...</span>
+                        </div>
+                        <div class="form-check form-switch d-flex align-items-center mb-0">
+                            <input class="form-check-input me-1" type="checkbox" id="mqttEnabled">
+                            <label class="form-check-label small text-muted" for="mqttEnabled">Aktif</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold small text-muted">BROKER</label>
+                            <input type="text" id="mqttBroker" class="form-control" placeholder="shelter.cbinstrument.com:1883">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-bold small text-muted">PROTOCOL</label>
+                            <select id="mqttProtocol" class="form-select">
+                                <option value="tcp">TCP</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-bold small text-muted">PREFIX TOPIC</label>
+                            <input type="text" id="mqttTopicPrefix" class="form-control" placeholder="shelter/SHELTER-01">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-bold small text-muted">USER (opsional)</label>
+                            <input type="text" id="mqttUsername" class="form-control" placeholder="kosongkan jika tanpa autentikasi" autocomplete="off">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-bold small text-muted">PASSWORD</label>
+                            <input type="password" id="mqttPassword" class="form-control" placeholder="••••" autocomplete="new-password">
+                        </div>
+                        <div class="col-md-12 d-flex align-items-center gap-2 mt-2">
+                            <button class="btn btn-primary fw-bold" onclick="saveMQTTSettings()">
+                                <i class="bi bi-check2 me-1"></i> Simpan & Terapkan
+                            </button>
+                            <span id="mqttToast" class="text-success small fw-semibold d-none"></span>
+                        </div>
+                    </div>
+                    <div class="form-text small mt-2">
+                        <i class="bi bi-info-circle me-1"></i>
+                        <strong>Alur Subscribe MQTT:</strong> Hardware → MQTT Broker → Backend Subscribe → Database → Frontend.
+                        <br><i class="bi bi-info-circle me-1"></i>
+                        Untuk <strong>shelter.cbinstrument.com</strong>: Broker <code>shelter.cbinstrument.com:1883</code>, Topik <code>/sensors</code>, Protocol <strong>TCP</strong> (tanpa TLS).
+                        <br><i class="bi bi-info-circle me-1"></i>
+                        Payload diharapkan JSON multi-sensor: <code>{"sensors":[{"sensor_type":"temperature","value":28.5},...]}</code> atau flat <code>{"temperature":28.5,"humidity":65}</code>.
+                        <br><i class="bi bi-info-circle me-1"></i>
+                        Mapping ke sensor lokal via kolom <strong>ExternalKey</strong> di form sensor (temperature, humidity, air_quality, light_level).
+                    </div>
+                </div>
+            </div>
+
             <div class="card card-custom">
                 <div class="card-header bg-white py-3 border-0">
                     <h6 class="mb-0 fw-bold text-slate-700">Daftar Tipe Sensor</h6>
@@ -542,6 +600,9 @@
 
                 <label class="form-label fw-bold small text-muted">PASSWORD</label>
                 <input type="password" id="newUserPassword" class="form-control mb-3" placeholder="Minimal 6 karakter">
+
+                <label class="form-label fw-bold small text-muted">UBAH JUDUL DASHBOARD</label>
+                <input type="text" id="newUserCustomTitle" class="form-control mb-3" placeholder="Kosongkan untuk default">
 
                 <label class="form-label fw-bold small text-muted">ROLE</label>
                 <select id="newUserRole" class="form-select">
@@ -658,6 +719,7 @@
                             <option value="°C">°C (Derajat Celcius)</option>
                             <option value="°F">°F (Derajat Fahrenheit)</option>
                             <option value="pH">pH (Keasaman)</option>
+                            <option value="%">% (Persen - Kelembaban)</option>
                             <option value="mg/L">mg/L (Miligram per Liter)</option>
                             <option value="ml/L">ml/L (Mililiter per Liter)</option>
                             <option value="ppm">ppm (Parts Per Million)</option>
@@ -665,6 +727,9 @@
                             <option value="µS/cm">µS/cm (Konduktivitas)</option>
                             <option value="mS/cm">mS/cm (Konduktivitas Tinggi)</option>
                             <option value="mg/L O₂">mg/L O₂ (Dissolved Oxygen)</option>
+                            <option value="lux">lux (Cahaya/Light Level)</option>
+                            <option value="AQI">AQI (Air Quality Index)</option>
+                            <option value="μg/m³">μg/m³ (Mikrogram per meter kubik)</option>
                             <option value="mm">mm (Kedalaman/Curah Hujan)</option>
                             <option value="m/s">m/s (Kecepatan Aliran)</option>
                             <option value="L/L">L/L (Rasio Volume)</option>
@@ -689,6 +754,7 @@
                             <select id="sensorSumber" class="form-select" onchange="syncModbusVisibility()">
                                 <option value="simulasi">Simulasi</option>
                                 <option value="real">Real (Modbus)</option>
+                                <option value="mqtt">MQTT</option>
                             </select>
                             <div class="form-check form-switch d-flex align-items-center mb-0 px-2" title="Aktif/Nonaktif">
                                 <input class="form-check-input" type="checkbox" id="sensorAktif" checked>
@@ -776,6 +842,33 @@
                     </div>
                 </div>
 
+                <div id="mqttConfigWrap" class="d-none">
+                    <hr class="my-4">
+                    <h6 class="fw-bold text-slate-700 mb-3"><i class="bi bi-wifi me-2 text-primary"></i>Konfigurasi MQTT (untuk sumber MQTT)</h6>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted">EXTERNAL KEY (mapping)</label>
+                            <input type="text" id="sensorExternalKey" class="form-control" list="externalKeyOptions" placeholder="temperature" title="Key untuk mapping ke payload MQTT: temperature, humidity, air_quality, light_level, soil_moisture, co2, nh4, o2">
+                            <datalist id="externalKeyOptions">
+                                <option value="temperature"></option>
+                                <option value="humidity"></option>
+                                <option value="air_quality"></option>
+                                <option value="light_level"></option>
+                                <option value="soil_moisture"></option>
+                                <option value="co2"></option>
+                                <option value="nh4"></option>
+                                <option value="o2"></option>
+                            </datalist>
+                        </div>
+                        <div class="col-md-12 d-flex align-items-end">
+                            <div class="form-text small text-muted">
+                                <strong>External Key:</strong> kunci mapping payload MQTT ke sensor ini. Pilih dari saran (temperature, humidity, air_quality, light_level, soil_moisture, co2, nh4, o2) atau <strong>ketik bebas</strong> sesuai key di payload broker Anda.
+                                <br>Topik yang di-subscribe diatur global di <strong>Pengaturan MQTT</strong> (satu topik untuk semua sensor).
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <input type="hidden" id="sensorTypeID">
             </div>
             <div class="modal-footer border-0 pt-0">
@@ -798,15 +891,27 @@
         document.getElementById('menuApiKeys').classList.remove('active');
         document.getElementById('menuSensorTypes').classList.remove('active');
 
+        // Hentikan interval status MQTT jika berpindah dari tab sensors
+        if (window.mqttStatusInterval) {
+            clearInterval(window.mqttStatusInterval);
+            window.mqttStatusInterval = null;
+        }
+
         if (tab === 'users') {
             document.getElementById('tabUsers').classList.remove('d-none');
             document.getElementById('menuUsers').classList.add('active');
             fetchUsers();
+            fetchAdminProfile();
         } else if (tab === 'sensors') {
             document.getElementById('tabSensors').classList.remove('d-none');
             document.getElementById('menuSensorTypes').classList.add('active');
             fetchSensorTypes();
             loadSpikeSettings();
+            loadMQTTSettings();
+            updateMQTTStatus();
+            // Update status MQTT setiap 5 detik
+            if (window.mqttStatusInterval) clearInterval(window.mqttStatusInterval);
+            window.mqttStatusInterval = setInterval(updateMQTTStatus, 5000);
         } else {
             document.getElementById('tabApikey').classList.remove('d-none');
             document.getElementById('menuApiKeys').classList.add('active');
@@ -815,6 +920,18 @@
     }
 
     // --- KELOLA USER ---
+    async function fetchAdminProfile() {
+        try {
+            const res = await fetch('/api/profile');
+            if (!res.ok) return;
+            const user = await res.json();
+            const customTitle = user.custom_title || 'Sistem Monitoring COD & Suhu Air';
+            document.getElementById('adminTopbarTitle').innerText = customTitle;
+        } catch (err) {
+            console.error("Gagal memuat profil admin:", err);
+        }
+    }
+
     async function fetchUsers() {
         try {
             const res = await fetch('/api/admin/users');
@@ -894,6 +1011,7 @@
         const nama = document.getElementById('newUserName').value.trim();
         const username = document.getElementById('newUserUsername').value.trim();
         const password = document.getElementById('newUserPassword').value;
+        const customTitle = document.getElementById('newUserCustomTitle').value.trim();
         const role = document.getElementById('newUserRole').value;
 
         if (!nama || !username || !password) { showCreateUserAlert('Semua field harus diisi!', 'danger'); return; }
@@ -903,7 +1021,7 @@
             const res = await fetch('/api/admin/users', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ nama, username, password, role })
+                body: JSON.stringify({ nama, username, password, role, custom_title: customTitle || null })
             });
             const result = await res.json();
             if (res.ok) {
@@ -994,6 +1112,79 @@
         }
     }
 
+    async function loadMQTTSettings() {
+        try {
+            const res = await fetch('/api/setting/mqtt');
+            if (!res.ok) return;
+            const data = await res.json();
+            document.getElementById('mqttEnabled').checked = !!data.enabled;
+            document.getElementById('mqttBroker').value = data.broker || '';
+            document.getElementById('mqttProtocol').value = data.protocol || 'tcp';
+            document.getElementById('mqttTopicPrefix').value = data.topic_prefix || '';
+            document.getElementById('mqttUsername').value = data.username || '';
+            // Jangan isi field password dari server (sensif) — biarkan user mengisi ulang bila ingin ganti.
+        } catch (err) {
+            console.error("Gagal memuat pengaturan MQTT:", err);
+        }
+    }
+
+    async function updateMQTTStatus() {
+        try {
+            const res = await fetch('/api/setting/mqtt/status');
+            if (!res.ok) return;
+            const data = await res.json();
+            const badge = document.getElementById('mqttStatusBadge');
+
+            if (data.status === 'connected') {
+                badge.className = 'badge badge-soft-success';
+                badge.innerHTML = '<i class="bi bi-wifi me-1"></i>Terhubung';
+            } else if (data.status === 'disconnected') {
+                badge.className = 'badge badge-soft-danger';
+                badge.innerHTML = '<i class="bi bi-wifi-off me-1"></i>Terputus';
+            } else {
+                badge.className = 'badge badge-soft-secondary';
+                badge.innerHTML = '<i class="bi bi-x-circle me-1"></i>Nonaktif';
+            }
+        } catch (err) {
+            console.error("Gagal mengambil status MQTT:", err);
+        }
+    }
+
+    async function saveMQTTSettings() {
+        const toast = document.getElementById('mqttToast');
+        const showToast = (msg, ok) => {
+            toast.classList.remove('d-none');
+            toast.className = (ok ? 'text-success' : 'text-danger') + ' small fw-semibold';
+            toast.textContent = msg;
+            setTimeout(() => toast.classList.add('d-none'), 3000);
+        };
+        const body = {
+            enabled: document.getElementById('mqttEnabled').checked,
+            broker: document.getElementById('mqttBroker').value.trim(),
+            protocol: document.getElementById('mqttProtocol').value,
+            topic_prefix: document.getElementById('mqttTopicPrefix').value.trim(),
+            username: document.getElementById('mqttUsername').value.trim(),
+            password: document.getElementById('mqttPassword').value
+        };
+        try {
+            const res = await fetch('/api/setting/mqtt', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                showToast(data.error || 'Gagal menyimpan pengaturan MQTT!', false);
+                return;
+            }
+            document.getElementById('mqttPassword').value = '';
+            showToast(data.message || '✓ Pengaturan MQTT tersimpan', true);
+        } catch (err) {
+            showToast('Gagal menyimpan pengaturan MQTT!', false);
+            console.error("Gagal menyimpan pengaturan MQTT:", err);
+        }
+    }
+
     function renderSensorTypeTable(types) {
         const tbody = document.getElementById('sensorTypeTableBody');
         if (types.length === 0) {
@@ -1004,10 +1195,11 @@
             const statusBadge = st.aktif
                 ? '<span class="badge badge-soft-success">Aktif</span>'
                 : '<span class="badge badge-soft-danger">Nonaktif</span>';
-            const sumberReal = (st.sumber === 'real');
-            const sumberBadge = sumberReal
+            const sumberBadge = st.sumber === 'real'
                 ? '<span class="badge bg-primary-subtle text-primary border">Real-time</span>'
-                : '<span class="badge badge-soft-warning">Simulasi</span>';
+                : (st.sumber === 'mqtt'
+                    ? '<span class="badge bg-info-subtle text-info-emphasis border">MQTT</span>'
+                    : '<span class="badge badge-soft-warning">Simulasi</span>');
             const colorDot = `<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${st.warna};margin-right:6px;"></span>`;
             return `
                 <tr>
@@ -1015,7 +1207,7 @@
                     <td class="fw-bold text-slate-700">${colorDot}${st.nama}</td>
                     <td><code class="text-primary">${st.unit}</code></td>
                     <td class="fw-semibold">${st.nilai_max > 0 ? st.nilai_max : '-'}</td>
-                    <td>${sumberBadge}</td>
+                    <td>${sumberBadge}${st.sumber === 'mqtt' && st.external_key ? `<br><code class="small text-muted">key: ${st.external_key}</code>` : ''}</td>
                     <td>${statusBadge}</td>
                     <td class="text-center">
                         <button class="btn btn-light btn-sm fw-bold px-2 me-1 border shadow-sm" onclick="openEditSensorTypeModal(${st.ID})" title="Edit">
@@ -1105,6 +1297,7 @@ function openEditSensorTypeModal(id) {
                 document.getElementById('sensorRegisterAddr').value = item.register_addr || 0;
                 document.getElementById('sensorBaudRate').value = item.baud_rate || 9600;
                 document.getElementById('sensorRegisterFormat').value = item.register_format || 'float.be';
+                document.getElementById('sensorExternalKey').value = item.external_key || '';
                 document.getElementById('modbusMethodManual').checked = true;
                 setModbusMethod('manual');
                 syncModbusVisibility();
@@ -1137,6 +1330,7 @@ function setModbusMethod(mode) {
 function syncModbusVisibility() {
     const sumber = document.getElementById('sensorSumber').value;
     document.getElementById('modbusConfigWrap').classList.toggle('d-none', sumber !== 'real');
+    document.getElementById('mqttConfigWrap').classList.toggle('d-none', sumber !== 'mqtt');
 }
 
 // --- SCAN OTOMATIS MODBUS (di dalam modal) ---
@@ -1253,12 +1447,13 @@ function saveSensorType() {
         sumber: document.getElementById('sensorSumber').value,
         aktif: document.getElementById('sensorAktif').checked,
 
-        // Payload Modbus
+        // Payload Modbus/MQTT
         port_com: document.getElementById('sensorPortCom').value.trim() || 'COM3',
         slave_id: parseInt(document.getElementById('sensorSlaveID').value) || 1,
         register_addr: parseInt(document.getElementById('sensorRegisterAddr').value) || 0,
         baud_rate: parseInt(document.getElementById('sensorBaudRate').value) || 9600,
-        register_format: document.getElementById('sensorRegisterFormat').value || 'float.be'
+        register_format: document.getElementById('sensorRegisterFormat').value || 'float.be',
+        external_key: document.getElementById('sensorExternalKey').value.trim()
     };
 
     if (!payload.nama || !payload.unit) {
@@ -1400,7 +1595,7 @@ function deleteSensorType(id) {
                 <tr>
                     <td class="ps-3 text-secondary">${i + 1}</td>
                     <td class="fw-bold text-slate-700">${k.name}</td>
-                    <td><span class="api-key-cell">${k.key}</span></td>
+                    <td><span class="api-key-cell" title="${k.masked}">${k.masked}</span></td>
                     <td>${statusBadge}</td>
                     <td class="text-muted small">${date}</td>
                     <td class="text-center">
@@ -1435,7 +1630,7 @@ function deleteSensorType(id) {
             if (res.ok) {
                 bootstrap.Modal.getInstance(document.getElementById('createKeyModal')).hide();
                 document.getElementById('createdKeyName').innerText = result.key.name;
-                document.getElementById('createdKeyValue').innerText = result.key.key;
+                document.getElementById('createdKeyValue').innerText = result.api_key;
                 new bootstrap.Modal(document.getElementById('showKeyModal')).show();
                 fetchApiKeys();
             } else {
@@ -1518,6 +1713,7 @@ function deleteSensorType(id) {
     updateClock();
     setInterval(updateClock, 1000);
     fetchUsers();
+    fetchAdminProfile();
 
     // --- DARK MODE & FULLSCREEN ---
     const themeToggleBtn = document.getElementById('themeToggle');

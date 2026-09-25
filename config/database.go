@@ -4,29 +4,51 @@ import (
 	"log"
 
 	"github.com/glebarez/sqlite"
+	mysqldriver "gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
 var DB *gorm.DB
 
+// ConnectDatabase membuka koneksi sesuai Cfg.DBType:
+//   - "sqlite": file monitoring.db (pure-Go, tanpa CGO — untuk deploy Pi).
+//   - "mysql" : server MySQL/MariaDB lewat DSN di Cfg.DBDSN.
+//
+// Pool koneksi disesuaikan per dialek (SQLite serial 1 koneksi; MySQL paralel).
 func ConnectDatabase() {
-	// Membuka atau membuat file database 'monitoring.db' tanpa butuh CGO.
-	// Mode WAL + busy_timeout untuk mencegah error "database is locked (SQLITE_BUSY)"
-	// akibat tulis sensor (simulator) dan operasi admin yang berjalan bersamaan.
-	dsn := Cfg.DBDSN
-	database, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
-	if err != nil {
-		log.Fatal("Gagal terhubung ke database SQLite:", err)
+	var (
+		database *gorm.DB
+		err      error
+	)
+
+	switch Cfg.DBType {
+	case "mysql":
+		database, err = gorm.Open(mysqldriver.Open(Cfg.DBDSN), &gorm.Config{})
+		if err != nil {
+			log.Fatal("Gagal terhubung ke database MySQL:", err)
+		}
+	default:
+		database, err = gorm.Open(sqlite.Open(Cfg.DBDSN), &gorm.Config{})
+		if err != nil {
+			log.Fatal("Gagal terhubung ke database SQLite:", err)
+		}
 	}
 
-	// Serialkan akses DB (1 koneksi) agar tidak ada bentrok tulis antar-goroutine.
 	sqlDB, err := database.DB()
 	if err != nil {
-		log.Fatal("Gagal menginisialisasi pool koneksi SQLite:", err)
+		log.Fatal("Gagal menginisialisasi pool koneksi database:", err)
 	}
-	sqlDB.SetMaxOpenConns(1)
-	sqlDB.SetMaxIdleConns(1)
+
+	if Cfg.DBType == "mysql" {
+		sqlDB.SetMaxOpenConns(10)
+		sqlDB.SetMaxIdleConns(4)
+		sqlDB.SetConnMaxLifetime(0)
+	} else {
+		// Serialkan akses SQLite (1 koneksi) agar tidak ada bentrok tulis.
+		sqlDB.SetMaxOpenConns(1)
+		sqlDB.SetMaxIdleConns(1)
+	}
 
 	DB = database
-	log.Println("Database SQLite berhasil terhubung tanpa CGO!")
+	log.Printf("Database %s berhasil terhubung.", Cfg.DBType)
 }
